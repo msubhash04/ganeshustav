@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body, #root {
+    height: 100%;
+  }
+  body {
+    @apply bg-cream text-maroon-900 font-body;
+    background-image: radial-gradient(circle at 1px 1px, rgba(255,153,51,0.12) 1px, transparent 0);
+    background-size: 22px 22px;
+  }
+  h1, h2, h3, h4 {
+    @apply font-display;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-white rounded-2xl shadow-card border border-saffron-100 p-5;
+  }
+  .btn-primary {
+    @apply bg-gradient-to-r from-saffron-500 to-maroon-600 text-white font-semibold px-4 py-2.5 rounded-xl
+           shadow-card hover:brightness-105 active:scale-[0.98] transition disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-secondary {
+    @apply bg-white border border-saffron-300 text-maroon-700 font-medium px-4 py-2.5 rounded-xl
+           hover:bg-saffron-50 transition;
+  }
+  .input-field {
+    @apply w-full border border-saffron-200 rounded-xl px-3.5 py-2.5 bg-white
+           focus:outline-none focus:ring-2 focus:ring-saffron-400 focus:border-transparent transition;
+  }
+  .label-text {
+    @apply text-sm font-medium text-maroon-700 mb-1 block;
+  }
+  .page-title {
+    @apply text-2xl font-bold text-maroon-800;
+  }
+  .badge {
+    @apply inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold;
+  }
+}
+
+/* Print styles for donation receipts */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #printable-receipt, #printable-receipt * {
+    visibility: visible;
+  }
+  #printable-receipt {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+  }
+}
