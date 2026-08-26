@@ -19,7 +19,7 @@ export const reportApi = {
 }
 
 export const publicApi = {
-  getTransparency: () => axiosClient.get('/public/transparency').then((res) => res.data),
+  getTransparency: (tenantCode) => axiosClient.get(`/public/transparency/${tenantCode}`).then((res) => res.data),
 }
 
 export const memberApi = {

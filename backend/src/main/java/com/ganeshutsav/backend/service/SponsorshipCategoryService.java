@@ -1,13 +1,13 @@
 package com.ganeshutsav.backend.service;
 
 import com.ganeshutsav.backend.dto.SponsorshipDtos.CategoryDTO;
-import com.ganeshutsav.backend.entity.Member;
+import com.ganeshutsav.backend.entity.Committee;
 import com.ganeshutsav.backend.entity.SponsorshipCategory;
 import com.ganeshutsav.backend.repository.GeneralSponsorRepository;
 import com.ganeshutsav.backend.repository.SponsorshipCategoryRepository;
+import com.ganeshutsav.backend.security.TenantContext;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,33 +21,40 @@ public class SponsorshipCategoryService {
 
     private final SponsorshipCategoryRepository categoryRepository;
     private final GeneralSponsorRepository generalSponsorRepository;
+    private final TenantContext tenantContext;
 
     public List<CategoryDTO> getAll() {
-        return categoryRepository.findAll().stream().map(this::toDTO).collect(Collectors.toList());
+        Long committeeId = tenantContext.requireCommitteeId();
+        return categoryRepository.findByCommitteeIdOrderByNameAsc(committeeId)
+                .stream().map(this::toDTO).collect(Collectors.toList());
     }
 
     // used to populate the "Sponsorship Category" dropdown on the General Sponsors page
     public List<CategoryDTO> getActive() {
-        return categoryRepository.findByActiveTrueOrderByNameAsc().stream().map(this::toDTO).collect(Collectors.toList());
+        Long committeeId = tenantContext.requireCommitteeId();
+        return categoryRepository.findByCommitteeIdAndActiveTrueOrderByNameAsc(committeeId)
+                .stream().map(this::toDTO).collect(Collectors.toList());
     }
 
     @Transactional
     public CategoryDTO create(CategoryDTO dto) {
-        if (categoryRepository.existsByNameIgnoreCase(dto.getName())) {
+        Committee committee = tenantContext.requireCommittee();
+        if (categoryRepository.existsByCommitteeIdAndNameIgnoreCase(committee.getId(), dto.getName())) {
             throw new IllegalArgumentException("A sponsorship category named '" + dto.getName() + "' already exists");
         }
         SponsorshipCategory category = SponsorshipCategory.builder()
+                .committee(committee)
                 .name(dto.getName())
                 .description(dto.getDescription())
                 .active(true)
-                .createdBy(getCurrentMember())
+                .createdBy(tenantContext.getCurrentMember())
                 .build();
         return toDTO(categoryRepository.save(category));
     }
 
     @Transactional
     public CategoryDTO update(Long id, CategoryDTO dto) {
-        SponsorshipCategory existing = findEntity(id);
+        SponsorshipCategory existing = findOwnedEntity(id);
         existing.setName(dto.getName());
         existing.setDescription(dto.getDescription());
         existing.setActive(dto.isActive());
@@ -56,10 +63,8 @@ public class SponsorshipCategoryService {
 
     @Transactional
     public void delete(Long id) {
-        if (!categoryRepository.existsById(id)) {
-            throw new EntityNotFoundException("Sponsorship category not found: " + id);
-        }
-        if (generalSponsorRepository.existsByCategoryId(id)) {
+        SponsorshipCategory existing = findOwnedEntity(id);
+        if (generalSponsorRepository.existsByCategoryId(existing.getId())) {
             throw new IllegalStateException(
                     "Cannot delete this category - one or more sponsors are already assigned to it. " +
                     "Mark it inactive instead to hide it from new sponsorships.");
@@ -67,15 +72,12 @@ public class SponsorshipCategoryService {
         categoryRepository.deleteById(id);
     }
 
-    private SponsorshipCategory findEntity(Long id) {
-        return categoryRepository.findById(id)
+    // loads by id, then verifies it belongs to the caller's own committee
+    private SponsorshipCategory findOwnedEntity(Long id) {
+        SponsorshipCategory category = categoryRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Sponsorship category not found: " + id));
-    }
-
-    private Member getCurrentMember() {
-        Object principal = SecurityContextHolder.getContext().getAuthentication() != null
-                ? SecurityContextHolder.getContext().getAuthentication().getPrincipal() : null;
-        return (principal instanceof Member) ? (Member) principal : null;
+        tenantContext.assertOwnedByCurrentTenant(category.getCommittee());
+        return category;
     }
 
     private CategoryDTO toDTO(SponsorshipCategory c) {

@@ -19,7 +19,8 @@ import java.time.LocalDateTime;
  * edit the date/duration later if plans change.
  */
 @Entity
-@Table(name = "festival_years")
+@Table(name = "festival_years",
+       uniqueConstraints = @UniqueConstraint(columnNames = {"committee_id", "label"}))
 @Data
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @NoArgsConstructor
@@ -32,7 +33,18 @@ public class FestivalYear {
     @EqualsAndHashCode.Include
     private Long id;
 
-    @Column(nullable = false, unique = true)
+    // MULTI-TENANCY: every row belongs to exactly one Ganesh Committee.
+    // Always set server-side from the authenticated caller's own
+    // committee - never trusted from client input - to guarantee one
+    // committee can never read or write another committee's data.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "committee_id", nullable = false)
+    @ToString.Exclude
+    private Committee committee;
+
+    // unique PER COMMITTEE only (see the table-level constraint above) -
+    // two different committees can both have a "2026 Ganesh Utsav" year
+    @Column(nullable = false)
     private String label; // e.g. "2026 Ganesh Utsav"
 
     @Column(nullable = false)

@@ -2,13 +2,13 @@ package com.ganeshutsav.backend.service;
 
 import com.ganeshutsav.backend.dto.AuctionItemDTO;
 import com.ganeshutsav.backend.entity.AuctionItem;
+import com.ganeshutsav.backend.entity.Committee;
 import com.ganeshutsav.backend.entity.FestivalYear;
-import com.ganeshutsav.backend.entity.Member;
 import com.ganeshutsav.backend.repository.AuctionItemRepository;
 import com.ganeshutsav.backend.repository.FestivalYearRepository;
+import com.ganeshutsav.backend.security.TenantContext;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,22 +23,26 @@ public class AuctionService {
 
     private final AuctionItemRepository auctionItemRepository;
     private final FestivalYearRepository festivalYearRepository;
+    private final TenantContext tenantContext;
 
     public List<AuctionItemDTO> getByFestivalYear(Long festivalYearId) {
-        return auctionItemRepository.findByFestivalYearIdOrderByDayNumberAsc(festivalYearId)
+        FestivalYear year = findOwnedFestivalYear(festivalYearId);
+        return auctionItemRepository.findByFestivalYearIdOrderByDayNumberAsc(year.getId())
                 .stream().map(this::toDTO).collect(Collectors.toList());
     }
 
     public BigDecimal getTotalForFestivalYear(Long festivalYearId) {
-        return auctionItemRepository.getTotalAuctionAmount(festivalYearId);
+        FestivalYear year = findOwnedFestivalYear(festivalYearId);
+        return auctionItemRepository.getTotalAuctionAmount(year.getId());
     }
 
     @Transactional
     public AuctionItemDTO create(Long festivalYearId, AuctionItemDTO dto) {
-        FestivalYear year = festivalYearRepository.findById(festivalYearId)
-                .orElseThrow(() -> new EntityNotFoundException("Festival year not found: " + festivalYearId));
+        FestivalYear year = findOwnedFestivalYear(festivalYearId);
+        Committee committee = tenantContext.requireCommittee();
 
         AuctionItem item = AuctionItem.builder()
+                .committee(committee)
                 .festivalYear(year)
                 .dayNumber(dto.getDayNumber())
                 .itemName(dto.getItemName())
@@ -46,14 +50,14 @@ public class AuctionService {
                 .bidAmount(dto.getBidAmount())
                 .paymentStatus(dto.getPaymentStatus())
                 .paymentMode(dto.getPaymentMode())
-                .recordedBy(getCurrentMember())
+                .recordedBy(tenantContext.getCurrentMember())
                 .build();
         return toDTO(auctionItemRepository.save(item));
     }
 
     @Transactional
     public AuctionItemDTO update(Long id, AuctionItemDTO dto) {
-        AuctionItem item = findEntity(id);
+        AuctionItem item = findOwnedEntity(id);
         item.setDayNumber(dto.getDayNumber());
         item.setItemName(dto.getItemName());
         item.setWinnerName(dto.getWinnerName());
@@ -65,21 +69,23 @@ public class AuctionService {
 
     @Transactional
     public void delete(Long id) {
-        if (!auctionItemRepository.existsById(id)) {
-            throw new EntityNotFoundException("Auction item not found: " + id);
-        }
+        findOwnedEntity(id); // verifies ownership before deleting
         auctionItemRepository.deleteById(id);
     }
 
-    private AuctionItem findEntity(Long id) {
-        return auctionItemRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Auction item not found: " + id));
+    // guards against a festivalYearId belonging to a different committee
+    private FestivalYear findOwnedFestivalYear(Long festivalYearId) {
+        FestivalYear year = festivalYearRepository.findById(festivalYearId)
+                .orElseThrow(() -> new EntityNotFoundException("Festival year not found: " + festivalYearId));
+        tenantContext.assertOwnedByCurrentTenant(year.getCommittee());
+        return year;
     }
 
-    private Member getCurrentMember() {
-        Object principal = SecurityContextHolder.getContext().getAuthentication() != null
-                ? SecurityContextHolder.getContext().getAuthentication().getPrincipal() : null;
-        return (principal instanceof Member) ? (Member) principal : null;
+    private AuctionItem findOwnedEntity(Long id) {
+        AuctionItem item = auctionItemRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Auction item not found: " + id));
+        tenantContext.assertOwnedByCurrentTenant(item.getCommittee());
+        return item;
     }
 
     private AuctionItemDTO toDTO(AuctionItem a) {

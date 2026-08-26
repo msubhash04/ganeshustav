@@ -1,15 +1,15 @@
 package com.ganeshutsav.backend.service;
 
 import com.ganeshutsav.backend.dto.ExpenseDTO;
+import com.ganeshutsav.backend.entity.Committee;
 import com.ganeshutsav.backend.entity.Expense;
 import com.ganeshutsav.backend.entity.ExpenseCategory;
 import com.ganeshutsav.backend.entity.FestivalYear;
-import com.ganeshutsav.backend.entity.Member;
 import com.ganeshutsav.backend.repository.ExpenseRepository;
 import com.ganeshutsav.backend.repository.FestivalYearRepository;
+import com.ganeshutsav.backend.security.TenantContext;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -33,29 +33,34 @@ public class ExpenseService {
 
     private final ExpenseRepository expenseRepository;
     private final FestivalYearRepository festivalYearRepository;
+    private final TenantContext tenantContext;
     private static final String UPLOAD_DIR = "uploads/bills";
 
     public List<ExpenseDTO> getAll() {
-        return expenseRepository.findAll().stream().map(this::toDTO).collect(Collectors.toList());
+        Long committeeId = tenantContext.requireCommitteeId();
+        return expenseRepository.findByCommitteeIdOrderByExpenseDateDesc(committeeId)
+                .stream().map(this::toDTO).collect(Collectors.toList());
     }
 
     public List<ExpenseDTO> search(ExpenseCategory category, LocalDate startDate, LocalDate endDate) {
-        return expenseRepository.search(category, startDate, endDate)
+        Long committeeId = tenantContext.requireCommitteeId();
+        return expenseRepository.search(committeeId, category, startDate, endDate)
                 .stream().map(this::toDTO).collect(Collectors.toList());
     }
 
     public ExpenseDTO getById(Long id) {
-        return toDTO(findEntity(id));
+        return toDTO(findOwnedEntity(id));
     }
 
     @Transactional
     public ExpenseDTO create(ExpenseDTO dto, MultipartFile billFile) {
         validateNoteForMiscellaneous(dto);
-        Member current = getCurrentMember();
+        Committee committee = tenantContext.requireCommittee();
         String filePath = storeFileIfPresent(billFile);
-        FestivalYear year = resolveFestivalYear(dto.getFestivalYearId());
+        FestivalYear year = resolveFestivalYear(dto.getFestivalYearId(), committee.getId());
 
         Expense expense = Expense.builder()
+                .committee(committee)
                 .description(dto.getDescription())
                 .category(dto.getCategory())
                 .amount(dto.getAmount())
@@ -63,7 +68,7 @@ public class ExpenseService {
                 .expenseDate(dto.getExpenseDate())
                 .paymentMode(dto.getPaymentMode())
                 .billFilePath(filePath)
-                .recordedBy(current)
+                .recordedBy(tenantContext.getCurrentMember())
                 .festivalYear(year)
                 .dayNumber(dto.getDayNumber())
                 .note(dto.getNote())
@@ -81,17 +86,19 @@ public class ExpenseService {
         }
     }
 
-    private FestivalYear resolveFestivalYear(Long festivalYearId) {
+    private FestivalYear resolveFestivalYear(Long festivalYearId, Long committeeId) {
         if (festivalYearId != null) {
-            return festivalYearRepository.findById(festivalYearId).orElse(null);
+            return festivalYearRepository.findById(festivalYearId)
+                    .filter(y -> y.getCommittee().getId().equals(committeeId))
+                    .orElse(null);
         }
-        return festivalYearRepository.findFirstByActiveTrueOrderByIdDesc().orElse(null);
+        return festivalYearRepository.findFirstByCommitteeIdAndActiveTrueOrderByIdDesc(committeeId).orElse(null);
     }
 
     @Transactional
     public ExpenseDTO update(Long id, ExpenseDTO dto, MultipartFile billFile) {
         validateNoteForMiscellaneous(dto);
-        Expense existing = findEntity(id);
+        Expense existing = findOwnedEntity(id);
         existing.setDescription(dto.getDescription());
         existing.setCategory(dto.getCategory());
         existing.setAmount(dto.getAmount());
@@ -108,23 +115,23 @@ public class ExpenseService {
 
     @Transactional
     public void delete(Long id) {
-        if (!expenseRepository.existsById(id)) {
-            throw new EntityNotFoundException("Expense not found: " + id);
-        }
+        findOwnedEntity(id); // verifies ownership before deleting
         expenseRepository.deleteById(id);
     }
 
     public BigDecimal getTotalExpenses() {
-        return expenseRepository.getTotalExpenses();
+        return expenseRepository.getTotalExpenses(tenantContext.requireCommitteeId());
     }
 
     public List<ExpenseDTO> getByFestivalYear(Long festivalYearId) {
+        assertFestivalYearOwnedByCurrentTenant(festivalYearId);
         return expenseRepository.findByFestivalYearIdOrderByDayNumberAsc(festivalYearId)
                 .stream().map(this::toDTO).collect(Collectors.toList());
     }
 
     // day number -> total spent that day, for the "Day 1, Day 2, ..." expense sheets
     public Map<Integer, BigDecimal> getDayWiseTotals(Long festivalYearId) {
+        assertFestivalYearOwnedByCurrentTenant(festivalYearId);
         Map<Integer, BigDecimal> result = new LinkedHashMap<>();
         expenseRepository.getDayWiseTotals(festivalYearId)
                 .forEach(row -> result.put(row.getDayNumber(), row.getTotal()));
@@ -132,10 +139,20 @@ public class ExpenseService {
     }
 
     public Map<String, BigDecimal> getCategoryWiseTotals() {
+        Long committeeId = tenantContext.requireCommitteeId();
         Map<String, BigDecimal> result = new LinkedHashMap<>();
-        expenseRepository.getCategoryWiseTotals()
+        expenseRepository.getCategoryWiseTotals(committeeId)
                 .forEach(row -> result.put(row.getCategory().getLabel(), row.getTotal()));
         return result;
+    }
+
+    // guards against someone passing an arbitrary festivalYearId that
+    // belongs to a DIFFERENT committee - without this, day-wise totals for
+    // another committee's festival year could leak through these endpoints
+    private void assertFestivalYearOwnedByCurrentTenant(Long festivalYearId) {
+        FestivalYear year = festivalYearRepository.findById(festivalYearId)
+                .orElseThrow(() -> new EntityNotFoundException("Festival year not found: " + festivalYearId));
+        tenantContext.assertOwnedByCurrentTenant(year.getCommittee());
     }
 
     private String storeFileIfPresent(MultipartFile file) {
@@ -152,15 +169,12 @@ public class ExpenseService {
         }
     }
 
-    private Expense findEntity(Long id) {
-        return expenseRepository.findById(id)
+    // loads by id, then verifies it belongs to the caller's own committee
+    private Expense findOwnedEntity(Long id) {
+        Expense expense = expenseRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Expense not found: " + id));
-    }
-
-    private Member getCurrentMember() {
-        Object principal = SecurityContextHolder.getContext().getAuthentication() != null
-                ? SecurityContextHolder.getContext().getAuthentication().getPrincipal() : null;
-        return (principal instanceof Member) ? (Member) principal : null;
+        tenantContext.assertOwnedByCurrentTenant(expense.getCommittee());
+        return expense;
     }
 
     private ExpenseDTO toDTO(Expense e) {

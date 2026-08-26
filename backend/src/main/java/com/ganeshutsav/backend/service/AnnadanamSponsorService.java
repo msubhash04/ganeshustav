@@ -2,13 +2,13 @@ package com.ganeshutsav.backend.service;
 
 import com.ganeshutsav.backend.dto.SponsorshipDtos.AnnadanamSponsorDTO;
 import com.ganeshutsav.backend.entity.AnnadanamSponsor;
+import com.ganeshutsav.backend.entity.Committee;
 import com.ganeshutsav.backend.entity.FestivalYear;
-import com.ganeshutsav.backend.entity.Member;
 import com.ganeshutsav.backend.repository.AnnadanamSponsorRepository;
 import com.ganeshutsav.backend.repository.FestivalYearRepository;
+import com.ganeshutsav.backend.security.TenantContext;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,17 +22,21 @@ public class AnnadanamSponsorService {
 
     private final AnnadanamSponsorRepository annadanamSponsorRepository;
     private final FestivalYearRepository festivalYearRepository;
+    private final TenantContext tenantContext;
 
     public List<AnnadanamSponsorDTO> getByFestivalYear(Long festivalYearId) {
-        return annadanamSponsorRepository.findByFestivalYearIdOrderByDayNumberAsc(festivalYearId)
+        FestivalYear year = findOwnedFestivalYear(festivalYearId);
+        return annadanamSponsorRepository.findByFestivalYearIdOrderByDayNumberAsc(year.getId())
                 .stream().map(this::toDTO).collect(Collectors.toList());
     }
 
     @Transactional
     public AnnadanamSponsorDTO create(AnnadanamSponsorDTO dto) {
+        Committee committee = tenantContext.requireCommittee();
         FestivalYear year = resolveFestivalYear(dto.getFestivalYearId());
 
         AnnadanamSponsor sponsor = AnnadanamSponsor.builder()
+                .committee(committee)
                 .sponsorName(dto.getSponsorName())
                 .contactInfo(dto.getContactInfo())
                 .dayNumber(dto.getDayNumber())
@@ -40,14 +44,14 @@ public class AnnadanamSponsorService {
                 .contributionAmount(dto.getContributionAmount())
                 .contributionDetails(dto.getContributionDetails())
                 .festivalYear(year)
-                .recordedBy(getCurrentMember())
+                .recordedBy(tenantContext.getCurrentMember())
                 .build();
         return toDTO(annadanamSponsorRepository.save(sponsor));
     }
 
     @Transactional
     public AnnadanamSponsorDTO update(Long id, AnnadanamSponsorDTO dto) {
-        AnnadanamSponsor existing = findEntity(id);
+        AnnadanamSponsor existing = findOwnedEntity(id);
         existing.setSponsorName(dto.getSponsorName());
         existing.setContactInfo(dto.getContactInfo());
         existing.setDayNumber(dto.getDayNumber());
@@ -59,28 +63,30 @@ public class AnnadanamSponsorService {
 
     @Transactional
     public void delete(Long id) {
-        if (!annadanamSponsorRepository.existsById(id)) {
-            throw new EntityNotFoundException("Annadanam sponsor not found: " + id);
-        }
+        findOwnedEntity(id); // verifies ownership before deleting
         annadanamSponsorRepository.deleteById(id);
+    }
+
+    // guards against a festivalYearId belonging to a different committee
+    private FestivalYear findOwnedFestivalYear(Long festivalYearId) {
+        FestivalYear year = festivalYearRepository.findById(festivalYearId)
+                .orElseThrow(() -> new EntityNotFoundException("Festival year not found: " + festivalYearId));
+        tenantContext.assertOwnedByCurrentTenant(year.getCommittee());
+        return year;
     }
 
     private FestivalYear resolveFestivalYear(Long festivalYearId) {
         if (festivalYearId != null) {
-            return festivalYearRepository.findById(festivalYearId).orElse(null);
+            return findOwnedFestivalYear(festivalYearId);
         }
-        return festivalYearRepository.findFirstByActiveTrueOrderByIdDesc().orElse(null);
+        return festivalYearRepository.findFirstByCommitteeIdAndActiveTrueOrderByIdDesc(tenantContext.requireCommitteeId()).orElse(null);
     }
 
-    private AnnadanamSponsor findEntity(Long id) {
-        return annadanamSponsorRepository.findById(id)
+    private AnnadanamSponsor findOwnedEntity(Long id) {
+        AnnadanamSponsor sponsor = annadanamSponsorRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Annadanam sponsor not found: " + id));
-    }
-
-    private Member getCurrentMember() {
-        Object principal = SecurityContextHolder.getContext().getAuthentication() != null
-                ? SecurityContextHolder.getContext().getAuthentication().getPrincipal() : null;
-        return (principal instanceof Member) ? (Member) principal : null;
+        tenantContext.assertOwnedByCurrentTenant(sponsor.getCommittee());
+        return sponsor;
     }
 
     private AnnadanamSponsorDTO toDTO(AnnadanamSponsor s) {

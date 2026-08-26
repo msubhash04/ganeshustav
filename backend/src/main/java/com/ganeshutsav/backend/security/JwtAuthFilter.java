@@ -48,9 +48,29 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
 
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            Optional<Member> memberOpt = memberRepository.findByUsername(username);
+            // JOIN FETCH loads committee in the same query - safe to call
+            // getCommittee() below even though this filter runs outside a
+            // Hibernate session/transaction
+            Optional<Member> memberOpt = memberRepository.findByUsernameWithCommittee(username);
+
             if (memberOpt.isPresent() && jwtUtil.isTokenValid(token, username)) {
                 Member member = memberOpt.get();
+
+                // reject deactivated accounts even with an otherwise-valid,
+                // unexpired token
+                if (!member.isActive()) {
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+
+                // reject if this member's committee has been locked by the
+                // Developer post-festival (DEVELOPER accounts have no
+                // committee and are never affected by this check)
+                if (member.getCommittee() != null && !member.getCommittee().isActive()) {
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+
                 String role = jwtUtil.extractRole(token);
                 var authToken = new UsernamePasswordAuthenticationToken(
                         member, null, List.of(new SimpleGrantedAuthority("ROLE_" + role)));

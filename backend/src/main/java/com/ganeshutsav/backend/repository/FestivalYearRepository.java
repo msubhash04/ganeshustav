@@ -4,24 +4,30 @@ import com.ganeshutsav.backend.entity.FestivalYear;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 
 public interface FestivalYearRepository extends JpaRepository<FestivalYear, Long> {
 
-    // NOTE: intentionally NOT "findByActiveTrue()" - that derived query expects
-    // exactly one match and throws IncorrectResultSizeDataAccessException if more
-    // than one row is ever marked active (e.g. from manual test data or an edge
-    // case in the activation flow). This variant always deterministically picks
-    // the most recently created active year instead of crashing.
-    Optional<FestivalYear> findFirstByActiveTrueOrderByIdDesc();
+    List<FestivalYear> findByCommitteeIdOrderByYearDesc(Long committeeId);
 
-    // bulk-clears every active flag in one statement, so callers can self-heal
-    // any pre-existing "multiple rows marked active" data before setting a new one
+    // NOTE: intentionally NOT "findByCommitteeIdAndActiveTrue()" - a derived
+    // query expecting exactly one match throws IncorrectResultSizeDataAccessException
+    // if more than one row is ever marked active within a committee. This
+    // variant always deterministically picks one instead of crashing.
+    Optional<FestivalYear> findFirstByCommitteeIdAndActiveTrueOrderByIdDesc(Long committeeId);
+
+    // MULTI-TENANT SAFETY: scoped to a single committee - clearing active
+    // flags in one committee must NEVER affect any other committee's data
     @Modifying(clearAutomatically = true)
-    @Query("UPDATE FestivalYear f SET f.active = false WHERE f.active = true")
-    void deactivateAll();
+    @Query("UPDATE FestivalYear f SET f.active = false WHERE f.committee.id = :committeeId AND f.active = true")
+    void deactivateAllForCommittee(@Param("committeeId") Long committeeId);
 
-    Optional<FestivalYear> findByYear(Integer year);
-    boolean existsByYear(Integer year);
+    boolean existsByCommitteeIdAndYear(Long committeeId, Integer year);
+
+    @Query("SELECT COUNT(f) FROM FestivalYear f WHERE f.year = :year AND f.active = true")
+    long countActiveUtsavsForYear(@Param("year") Integer year);
 }

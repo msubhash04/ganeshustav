@@ -1,15 +1,15 @@
 package com.ganeshutsav.backend.service;
 
 import com.ganeshutsav.backend.dto.DonationDTO;
+import com.ganeshutsav.backend.entity.Committee;
 import com.ganeshutsav.backend.entity.Donation;
 import com.ganeshutsav.backend.entity.FestivalYear;
-import com.ganeshutsav.backend.entity.Member;
 import com.ganeshutsav.backend.repository.DonationRepository;
 import com.ganeshutsav.backend.repository.FestivalYearRepository;
+import com.ganeshutsav.backend.security.TenantContext;
 import com.ganeshutsav.backend.util.ReceiptNumberGenerator;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,28 +26,33 @@ public class DonationService {
     private final DonationRepository donationRepository;
     private final ReceiptNumberGenerator receiptNumberGenerator;
     private final FestivalYearRepository festivalYearRepository;
+    private final TenantContext tenantContext;
 
     public List<DonationDTO> getAll() {
-        return donationRepository.findAll().stream().map(this::toDTO).collect(Collectors.toList());
+        Long committeeId = tenantContext.requireCommitteeId();
+        return donationRepository.findByCommitteeIdOrderByDonationDateDesc(committeeId)
+                .stream().map(this::toDTO).collect(Collectors.toList());
     }
 
     public List<DonationDTO> search(String name, LocalDate startDate, LocalDate endDate,
                                      BigDecimal minAmount, BigDecimal maxAmount) {
+        Long committeeId = tenantContext.requireCommitteeId();
         return donationRepository.search(
-                (name == null || name.isBlank()) ? null : name,
+                committeeId, (name == null || name.isBlank()) ? null : name,
                 startDate, endDate, minAmount, maxAmount
         ).stream().map(this::toDTO).collect(Collectors.toList());
     }
 
     public DonationDTO getById(Long id) {
-        return toDTO(findEntity(id));
+        return toDTO(findOwnedEntity(id));
     }
 
     @Transactional
     public DonationDTO create(DonationDTO dto) {
-        Member current = getCurrentMember();
-        FestivalYear year = resolveFestivalYear(dto.getFestivalYearId());
+        Committee committee = tenantContext.requireCommittee();
+        FestivalYear year = resolveFestivalYear(dto.getFestivalYearId(), committee.getId());
         Donation donation = Donation.builder()
+                .committee(committee)
                 .receiptNumber(receiptNumberGenerator.next())
                 .donorName(dto.getDonorName())
                 .phoneNumber(dto.getPhoneNumber())
@@ -55,25 +60,27 @@ public class DonationService {
                 .amount(dto.getAmount())
                 .paymentMode(dto.getPaymentMode())
                 .donationDate(dto.getDonationDate())
-                .recordedBy(current)
+                .recordedBy(tenantContext.getCurrentMember())
                 .festivalYear(year)
                 .build();
         return toDTO(donationRepository.save(donation));
     }
 
-    // uses the explicitly provided festival year, or falls back to whichever
-    // year is currently marked active - keeps the API usable even before the
-    // frontend is updated to always send a festivalYearId
-    private FestivalYear resolveFestivalYear(Long festivalYearId) {
+    // uses the explicitly provided festival year (if it belongs to the
+    // caller's own committee), or falls back to whichever year is
+    // currently marked active for that committee
+    private FestivalYear resolveFestivalYear(Long festivalYearId, Long committeeId) {
         if (festivalYearId != null) {
-            return festivalYearRepository.findById(festivalYearId).orElse(null);
+            return festivalYearRepository.findById(festivalYearId)
+                    .filter(y -> y.getCommittee().getId().equals(committeeId))
+                    .orElse(null);
         }
-        return festivalYearRepository.findFirstByActiveTrueOrderByIdDesc().orElse(null);
+        return festivalYearRepository.findFirstByCommitteeIdAndActiveTrueOrderByIdDesc(committeeId).orElse(null);
     }
 
     @Transactional
     public DonationDTO update(Long id, DonationDTO dto) {
-        Donation existing = findEntity(id);
+        Donation existing = findOwnedEntity(id);
         existing.setDonorName(dto.getDonorName());
         existing.setPhoneNumber(dto.getPhoneNumber());
         existing.setAddress(dto.getAddress());
@@ -85,25 +92,21 @@ public class DonationService {
 
     @Transactional
     public void delete(Long id) {
-        if (!donationRepository.existsById(id)) {
-            throw new EntityNotFoundException("Donation not found: " + id);
-        }
+        findOwnedEntity(id); // verifies ownership before deleting
         donationRepository.deleteById(id);
     }
 
     public BigDecimal getTotalCollection() {
-        return donationRepository.getTotalCollection();
+        return donationRepository.getTotalCollection(tenantContext.requireCommitteeId());
     }
 
-    private Donation findEntity(Long id) {
-        return donationRepository.findById(id)
+    // loads by id, then verifies it belongs to the caller's own committee -
+    // this is what actually prevents "Committee A reading Committee B's donations"
+    private Donation findOwnedEntity(Long id) {
+        Donation donation = donationRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Donation not found: " + id));
-    }
-
-    private Member getCurrentMember() {
-        Object principal = SecurityContextHolder.getContext().getAuthentication() != null
-                ? SecurityContextHolder.getContext().getAuthentication().getPrincipal() : null;
-        return (principal instanceof Member) ? (Member) principal : null;
+        tenantContext.assertOwnedByCurrentTenant(donation.getCommittee());
+        return donation;
     }
 
     private DonationDTO toDTO(Donation d) {

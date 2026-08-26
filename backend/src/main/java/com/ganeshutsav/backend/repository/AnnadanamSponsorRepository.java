@@ -7,5 +7,4 @@ import java.util.List;
 
 public interface AnnadanamSponsorRepository extends JpaRepository<AnnadanamSponsor, Long> {
     List<AnnadanamSponsor> findByFestivalYearIdOrderByDayNumberAsc(Long festivalYearId);
-    List<AnnadanamSponsor> findByFestivalYearIdAndDayNumber(Long festivalYearId, Integer dayNumber);
 }

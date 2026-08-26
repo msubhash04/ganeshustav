@@ -27,6 +27,11 @@ public class AuthDtos {
         private String name;
         private String username;
         private CommitteeRole role;
+
+        // null for DEVELOPER (Super Admin) accounts, which belong to no committee
+        private Long committeeId;
+        private String committeeName;
+        private String tenantCode; // "Ganesh Unique Code"
     }
 
     @Data
@@ -40,7 +45,18 @@ public class AuthDtos {
         private String username;
         @NotBlank
         private String password;
+
+        // TREASURER / SECRETARY / VOLUNTEER only - PRESIDENT accounts are
+        // created exclusively by the Developer when the committee itself
+        // is created, and DEVELOPER accounts are never created via this
+        // public endpoint at all
         @NotBlank
-        private String role; // PRESIDENT / TREASURER / SECRETARY / VOLUNTEER
+        private String role;
+
+        // "Ganesh Unique Code" of the committee this member is joining -
+        // required, since every non-Developer account must belong to
+        // exactly one committee
+        @NotBlank
+        private String tenantCode;
     }
 }

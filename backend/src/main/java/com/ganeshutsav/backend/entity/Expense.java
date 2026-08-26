@@ -26,6 +26,15 @@ public class Expense {
     @EqualsAndHashCode.Include
     private Long id;
 
+    // MULTI-TENANCY: every row belongs to exactly one Ganesh Committee.
+    // Always set server-side from the authenticated caller's own
+    // committee - never trusted from client input - to guarantee one
+    // committee can never read or write another committee's data.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "committee_id", nullable = false)
+    @ToString.Exclude
+    private Committee committee;
+
     @Column(nullable = false, length = 255)
     private String description;
 

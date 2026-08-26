@@ -110,12 +110,19 @@ Login with the seeded `admin` / `Admin@123` (or whatever account you registered)
   - **Annadanam Sponsors** — a dedicated, separate table/interface for food-distribution sponsors, tracked per festival day since Annadanam is a daily activity
 - `/public` — **No login required.** Share this link with donors for transparency (totals + category breakdown only, no names/phones).
 
-### Roles & permissions
-All four roles from the original spec are preserved: **President**, **Treasurer**, **Secretary**, **Volunteer**. On top of login/logout, the President has exclusive admin rights over two areas, enforced both in the UI and on the backend (`@PreAuthorize("hasRole('PRESIDENT')")`):
-- **Festival Setup** — creating a new festival year, and editing its date/duration/carry-forward balance afterward
-- **Post-Festival Loans** — creating loans and recording repayments
+### Roles & permissions (multi-tenant)
+The platform now supports **multiple, fully isolated Ganesh Committees**. Five roles exist:
+- **Developer (Super Admin)** — global, platform-level access. Only the Developer can register new committees (each gets a unique, regenerable "Ganesh Unique Code"), view the cross-committee Developer Dashboard, and lock/unlock a committee's access. A Developer has no committee of their own and cannot edit any single committee's day-to-day data.
+- **President (Committee Admin)** — full CRUD within their own committee only: Festival Setup, Sponsorship Categories, Annadanam Sponsors, Micro-Lending, and staff management.
+- **Treasurer / Secretary / Volunteer (Staff)** — operational access within their own committee only: logging donations, recording expenses, managing auctions.
 
-Everyone with a committee login can enter donations, log expenses, and manage auction items.
+**No committee can ever see or modify another committee's data.** This is enforced server-side on every request (never from anything the client sends) — see `docs/MULTI_TENANCY_ARCHITECTURE.md` for the full design, including the database schema, a complete RBAC matrix, and the exact request-flow security model.
+
+**Developer seed account** (created directly in `database/schema.sql` — there is no API endpoint that can create a Developer account, by design):
+- **username:** `ganeshdev`
+- **password:** `GaneshDev@2026`
+
+Change this password after first login — there's currently no in-app "change password" flow, so do it via a direct `UPDATE` with a freshly generated BCrypt hash.
 
 ### How the loan interest calculation works
 Interest accrues monthly on the **reducing balance** (not the original principal). Every time a repayment is recorded:

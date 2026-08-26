@@ -6,7 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 
 public interface GeneralSponsorRepository extends JpaRepository<GeneralSponsor, Long> {
+    List<GeneralSponsor> findByCommitteeIdOrderByCreatedAtDesc(Long committeeId);
     List<GeneralSponsor> findByFestivalYearIdOrderByCreatedAtDesc(Long festivalYearId);
-    List<GeneralSponsor> findByCategoryId(Long categoryId);
     boolean existsByCategoryId(Long categoryId);
 }

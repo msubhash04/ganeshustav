@@ -5,6 +5,7 @@ import com.ganeshutsav.backend.entity.Donation;
 import com.ganeshutsav.backend.entity.Expense;
 import com.ganeshutsav.backend.repository.DonationRepository;
 import com.ganeshutsav.backend.repository.ExpenseRepository;
+import com.ganeshutsav.backend.security.TenantContext;
 
 // iText 8 PDF Imports
 import com.itextpdf.kernel.colors.DeviceRgb;
@@ -45,6 +46,7 @@ public class ReportService {
 
     private final DonationRepository donationRepository;
     private final ExpenseRepository expenseRepository;
+    private final TenantContext tenantContext;
 
     public byte[] generatePdfReport(LocalDate startDate, LocalDate endDate) throws IOException {
         List<Donation> donations = filterDonations(startDate, endDate);
@@ -273,14 +275,20 @@ public class ReportService {
         }
     }
 
+    // MULTI-TENANT SAFETY: always scoped to the caller's own committee via
+    // TenantContext - never returns another committee's donations, whether
+    // or not a date range was given (the old findAll() fallback here was a
+    // real cross-tenant data leak before this fix).
     private List<Donation> filterDonations(LocalDate start, LocalDate end) {
-        if (start == null || end == null) return donationRepository.findAll();
-        return donationRepository.findByDonationDateBetween(start, end);
+        Long committeeId = tenantContext.requireCommitteeId();
+        if (start == null || end == null) return donationRepository.findByCommitteeIdOrderByDonationDateDesc(committeeId);
+        return donationRepository.findByCommitteeIdAndDonationDateBetween(committeeId, start, end);
     }
 
     private List<Expense> filterExpenses(LocalDate start, LocalDate end) {
-        if (start == null || end == null) return expenseRepository.findAll();
-        return expenseRepository.findByExpenseDateBetween(start, end);
+        Long committeeId = tenantContext.requireCommitteeId();
+        if (start == null || end == null) return expenseRepository.findByCommitteeIdOrderByExpenseDateDesc(committeeId);
+        return expenseRepository.findByCommitteeIdAndExpenseDateBetween(committeeId, start, end);
     }
 
     private Cell cell(String text) {

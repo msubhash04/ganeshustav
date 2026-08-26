@@ -24,16 +24,24 @@ public class JwtUtil {
         return Keys.hmacShaKeyFor(secret.getBytes());
     }
 
-    public String generateToken(String username, String role) {
+    public String generateToken(String username, String role, String tenantCode) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + expirationMs);
-        return Jwts.builder()
+        var builder = Jwts.builder()
                 .subject(username)
                 .claim("role", role)
                 .issuedAt(now)
-                .expiration(expiry)
-                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
-                .compact();
+                .expiration(expiry);
+        // tenantCode is included ONLY so the frontend can display "which
+        // committee am I logged into" without an extra API call. The
+        // backend NEVER trusts this claim for authorization decisions -
+        // every service re-resolves the tenant from the Member row in
+        // the database on every request, via TenantContext. Null for
+        // DEVELOPER (Super Admin) accounts, which belong to no committee.
+        if (tenantCode != null) {
+            builder.claim("tenantCode", tenantCode);
+        }
+        return builder.signWith(getSigningKey(), SignatureAlgorithm.HS256).compact();
     }
 
     public String extractUsername(String token) {
