@@ -34,29 +34,15 @@ public class AuthDtos {
         private String tenantCode; // "Ganesh Unique Code"
     }
 
+    // Public self-registration (RegisterRequest) has been removed - see the
+    // comment in AuthController for why. Staff accounts are now created
+    // exclusively via POST /api/members by an authenticated PRESIDENT.
+
     @Data
-    public static class RegisterRequest {
+    public static class ChangePasswordRequest {
         @NotBlank
-        private String name;
+        private String currentPassword;
         @NotBlank
-        private String phone;
-        private String email;
-        @NotBlank
-        private String username;
-        @NotBlank
-        private String password;
-
-        // TREASURER / SECRETARY / VOLUNTEER only - PRESIDENT accounts are
-        // created exclusively by the Developer when the committee itself
-        // is created, and DEVELOPER accounts are never created via this
-        // public endpoint at all
-        @NotBlank
-        private String role;
-
-        // "Ganesh Unique Code" of the committee this member is joining -
-        // required, since every non-Developer account must belong to
-        // exactly one committee
-        @NotBlank
-        private String tenantCode;
+        private String newPassword;
     }
 }

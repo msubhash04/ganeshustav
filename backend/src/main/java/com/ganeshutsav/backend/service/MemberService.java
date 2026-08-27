@@ -52,7 +52,7 @@ public class MemberService {
         Member member = Member.builder()
                 .name(req.getName())
                 .phone(req.getPhone())
-                .email(req.getEmail())
+                .email(normalizeEmail(req.getEmail()))
                 .username(req.getUsername())
                 .password(passwordEncoder.encode(req.getPassword()))
                 .role(CommitteeRole.valueOf(role))
@@ -60,6 +60,16 @@ public class MemberService {
                 .active(true)
                 .build();
         return toResponse(memberRepository.save(member));
+    }
+
+    // Email is optional but unique at the DB level. MySQL's unique index
+    // allows any number of NULLs (they're never considered equal to each
+    // other) but does NOT allow duplicate empty strings - so a second
+    // member submitted with a blank email field would collide with the
+    // first and throw a DataIntegrityViolationException. Treating a
+    // blank/empty email as NULL avoids that entirely.
+    private String normalizeEmail(String email) {
+        return (email == null || email.isBlank()) ? null : email.trim();
     }
 
     @Transactional

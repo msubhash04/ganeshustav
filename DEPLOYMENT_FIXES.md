@@ -1,5 +1,61 @@
 # Deployment fixes applied
 
+## 1. Tenant Inspection Mode ("View as President") — new feature
+Developer can now drill into any single committee's full dashboard from
+the Committee Directory (`Eye` icon on each row):
+
+- **Read-Only Mode**: view every screen a President sees. Every non-GET
+  request is rejected with 403 by `InspectionModeFilter`, regardless of
+  which controller it hits.
+- **Admin Override Mode**: additionally grants `ROLE_PRESIDENT` for the
+  duration of the session (`JwtAuthFilter`), so the Developer can create/
+  edit/delete on the committee's behalf. Every successful mutating
+  request is written to `inspection_audit_logs`.
+- **Excluded in both modes**: `/api/members` (staff management) and
+  `/api/committees` (lock/unlock, regenerate code) — a Developer
+  inspecting a committee can never touch those, even in Admin Override.
+- Session start/end is always logged; per-action logs only happen in
+  Admin Override mode (Read-Only can't mutate anything, so there's
+  nothing to log beyond the session itself).
+- Implemented as a short-lived (30 min) second JWT carrying
+  `inspectedCommitteeId` + `inspectionMode` claims, resolved by
+  `TenantContext.requireCommittee()` — every existing domain service
+  (Donations, Expenses, Loans, Sponsorships, Auction, Festival Years)
+  needed zero changes, since they all already went through that one
+  method.
+- New endpoints: `POST /api/developer/inspect/{committeeId}`,
+  `POST /api/developer/inspect/exit`, `GET /api/developer/inspect/history`.
+
+## 0. Security fixes (latest)
+Three issues fixed:
+
+1. **Public self-registration removed.** `POST /api/auth/register` accepted
+   a committee's "Ganesh Unique Code" (`tenantCode`) as authorization to
+   create a TREASURER/SECRETARY/VOLUNTEER login for that committee. But
+   that exact code is displayed publicly on the `/public/transparency/{tenantCode}`
+   donor page (`PublicController`) — so anyone who saw a committee's public
+   transparency link could self-register as staff and get full CRUD access
+   to that committee's donations/expenses. The endpoint is removed
+   entirely; staff accounts are now created only via the existing,
+   properly-scoped `POST /api/members` (authenticated PRESIDENT, own
+   committee only via `TenantContext` — this always existed and needed no
+   changes).
+2. **Added a "change password" flow.** `POST /api/auth/change-password`
+   (any authenticated role) plus a **Change Password** button in the
+   sidebar. Seeded/admin passwords (`admin`, `ganeshdev`) should be changed
+   here immediately instead of via raw SQL.
+3. **Removed the hardcoded JWT secret fallback from source control.**
+   `application.properties` no longer ships a real base64 secret as the
+   default for `app.jwt.secret`. If `JWT_SECRET` isn't set, `JwtUtil` now
+   generates a random secret at startup (logged as a loud warning) that's
+   fine for local dev but invalidates all tokens on every restart —
+   forcing you to set a real `JWT_SECRET` before deploying anywhere real,
+   instead of silently reusing a value that was sitting in the repo.
+
+**Action required:** if you already deployed with the old default secret,
+rotate it now (`openssl rand -base64 64`) on Render's `JWT_SECRET` env var.
+
+
 ## 1. Frontend was ignoring `VITE_API_BASE_URL` (the actual bug causing the 405)
 `frontend/src/api/axiosClient.js` had `baseURL: '/api'` hardcoded, so it never
 read the `VITE_API_BASE_URL` env var you set in Vercel. In production this

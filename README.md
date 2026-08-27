@@ -29,7 +29,7 @@ ganesh-utsav/
    - **username:** `admin`
    - **password:** `Admin@123`
 
-   > Change this password immediately after your first login (there's no "change password" UI yet — update the `members` table directly with a new BCrypt hash, or extend `MemberController`).
+   > Change this password immediately after your first login using the **Change Password** button in the sidebar (or `POST /api/auth/change-password`).
 
 You don't strictly need to run this script by hand — with `spring.jpa.hibernate.ddl-auto=update` (already set), Spring Boot will create/update the tables automatically on first run. But you'll still need to insert at least one committee member manually or via `/api/auth/register` (see below) so you have a login.
 
@@ -52,26 +52,13 @@ You don't strictly need to run this script by hand — with `spring.jpa.hibernat
    ```
    The API starts on **http://localhost:8080**.
 
-4. If you didn't run `schema.sql`, create your first committee login:
-   ```bash
-   curl -X POST http://localhost:8080/api/auth/register \
-     -H "Content-Type: application/json" \
-     -d '{
-       "name": "Ramesh Patil",
-       "phone": "9876543210",
-       "email": "ramesh@example.com",
-       "username": "ramesh",
-       "password": "SecurePass123",
-       "role": "PRESIDENT"
-     }'
-   ```
-   In production, lock `/api/auth/register` down (e.g. require an existing PRESIDENT/TREASURER token) — it's left open here only to make first-run setup easy.
+4. If you didn't run `schema.sql`, you'll need at least one login seeded directly in the database (see step 2) — there's no public endpoint that creates accounts. This is deliberate: an earlier version of this API had a public `/api/auth/register` endpoint that accepted a committee's "Ganesh Unique Code" as proof of authorization, but that same code is shown publicly on the `/public/transparency/{tenantCode}` page, so it never should have doubled as a login credential. That endpoint has been removed. Once you have one PRESIDENT login (seeded via SQL, or created by a Developer account through `/api/committees`), all further staff accounts are added from the app itself: **Committee → Add Member** (`POST /api/members`, PRESIDENT-only, scoped to their own committee).
 
 ### Key API endpoints
 | Method | Endpoint | Auth | Purpose |
 |---|---|---|---|
 | POST | `/api/auth/login` | Public | Get JWT token |
-| POST | `/api/auth/register` | Public (lock down later) | Create committee login |
+| POST | `/api/auth/change-password` | Required | Change your own password |
 | GET | `/api/dashboard/summary` | Required | Totals, charts, recent transactions |
 | GET/POST/PUT/DELETE | `/api/donations` | Required | Collections CRUD + search |
 | GET/POST/PUT/DELETE | `/api/expenses` | Required | Expenses CRUD (multipart for bill upload) |
@@ -122,7 +109,7 @@ The platform now supports **multiple, fully isolated Ganesh Committees**. Five r
 - **username:** `ganeshdev`
 - **password:** `GaneshDev@2026`
 
-Change this password after first login — there's currently no in-app "change password" flow, so do it via a direct `UPDATE` with a freshly generated BCrypt hash.
+Change this password after first login using the **Change Password** button in the sidebar.
 
 ### How the loan interest calculation works
 Interest accrues monthly on the **reducing balance** (not the original principal). Every time a repayment is recorded:
@@ -145,9 +132,7 @@ Example matching the spec: ₹10,000 at 2%/month. After 6 months, a ₹6,200 pay
 ## 6. Production Notes / Next Steps
 
 This is a solid, working foundation — a few things worth doing before real deployment:
-- **Lock down `/api/auth/register`** so random people can't create committee logins.
-- **Move secrets out of `application.properties`** into environment variables.
-- **Add a "change password" flow** for committee members.
+- **Set a real `JWT_SECRET` environment variable** before deploying (see Section 3) — without it, the backend generates a random secret at startup that changes on every restart, invalidating all sessions.
 - **Add pagination** to the donations/expenses tables once you have hundreds of entries.
 - **Serve uploaded bill files** via a dedicated static resource handler or object storage (S3-compatible) instead of the local `uploads/bills` folder, especially if you deploy on ephemeral hosting.
 - **HTTPS everywhere** in production — JWTs over plain HTTP are not secure.

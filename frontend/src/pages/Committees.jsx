@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus, Search, RefreshCw, Lock, Unlock, LogOut } from 'lucide-react'
+import { ArrowLeft, Plus, Search, RefreshCw, Lock, Unlock, LogOut, Eye } from 'lucide-react'
 import Modal from '../components/common/Modal'
 import { committeeApi } from '../api/committeeApi'
 import { useAuth } from '../context/AuthContext'
@@ -12,7 +12,7 @@ const emptyForm = {
 }
 
 export default function Committees() {
-  const { user, logout } = useAuth()
+  const { user, logout, startInspection } = useAuth()
   const navigate = useNavigate()
 
   const [committees, setCommittees] = useState([])
@@ -23,6 +23,10 @@ export default function Committees() {
   const [form, setForm] = useState(emptyForm)
   const [submitting, setSubmitting] = useState(false)
   const [newCodeInfo, setNewCodeInfo] = useState(null)
+
+  const [inspectTarget, setInspectTarget] = useState(null)
+  const [inspectMode, setInspectMode] = useState('READ_ONLY')
+  const [inspecting, setInspecting] = useState(false)
 
   const load = (appliedFilters) => {
     setLoading(true)
@@ -68,6 +72,20 @@ export default function Committees() {
       await committeeApi.unlock(c.id)
     }
     load(filters)
+  }
+
+  const handleStartInspection = async () => {
+    if (!inspectTarget) return
+    setInspecting(true)
+    try {
+      await startInspection(inspectTarget.id, inspectMode)
+      setInspectTarget(null)
+      navigate('/')
+    } catch (err) {
+      alert(err?.response?.data?.error || err?.response?.data || 'Could not start inspection')
+    } finally {
+      setInspecting(false)
+    }
   }
 
   return (
@@ -150,6 +168,14 @@ export default function Committees() {
                       </td>
                       <td className="py-2.5 pr-4">
                         <div className="flex justify-end gap-2">
+                          <button
+                            onClick={() => { setInspectTarget(c); setInspectMode('READ_ONLY') }}
+                            className="text-maroon-400 hover:text-saffron-600 disabled:opacity-30"
+                            title="Inspect committee"
+                            disabled={!c.active}
+                          >
+                            <Eye size={16} />
+                          </button>
                           <button onClick={() => handleRegenerateCode(c)} className="text-maroon-400 hover:text-saffron-600" title="Regenerate code">
                             <RefreshCw size={16} />
                           </button>
@@ -226,11 +252,52 @@ export default function Committees() {
       <Modal open={!!newCodeInfo} onClose={() => setNewCodeInfo(null)} title="Ganesh Unique Code">
         {newCodeInfo && (
           <div className="space-y-3">
-            <p className="text-sm text-maroon-600">Share this code with <strong>{newCodeInfo.name}</strong> — their President uses it, and staff use it to self-register.</p>
+            <p className="text-sm text-maroon-600">Share this code with <strong>{newCodeInfo.name}</strong>'s President so they can identify their committee. It's also shown publicly on their donor transparency page, so it isn't a login credential — staff accounts are added by the President from the Committee Members page, not by self-registering with this code.</p>
             <div className="bg-saffron-50 border border-saffron-200 rounded-xl px-4 py-3 text-center">
               <p className="text-2xl font-bold font-mono text-maroon-800">{newCodeInfo.tenantCode}</p>
             </div>
             <button onClick={() => setNewCodeInfo(null)} className="btn-primary w-full">Done</button>
+          </div>
+        )}
+      </Modal>
+
+      {/* Tenant Inspection ("View as President") mode selection */}
+      <Modal open={!!inspectTarget} onClose={() => setInspectTarget(null)} title="Inspect Committee">
+        {inspectTarget && (
+          <div className="space-y-4">
+            <p className="text-sm text-maroon-600">
+              You're about to view <strong>{inspectTarget.name}</strong>'s full dashboard exactly as their President
+              sees it. Staff management and committee settings stay off-limits either way — exit inspection to
+              change those from here.
+            </p>
+            <div className="space-y-2">
+              <label className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer ${
+                inspectMode === 'READ_ONLY' ? 'border-saffron-400 bg-saffron-50' : 'border-saffron-100'
+              }`}>
+                <input type="radio" name="inspectMode" className="mt-1" checked={inspectMode === 'READ_ONLY'}
+                       onChange={() => setInspectMode('READ_ONLY')} />
+                <span>
+                  <span className="block font-semibold text-maroon-800">Read-Only Mode</span>
+                  <span className="block text-xs text-maroon-500">View every screen and record. Any attempt to add, edit, or delete is blocked.</span>
+                </span>
+              </label>
+              <label className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer ${
+                inspectMode === 'ADMIN_OVERRIDE' ? 'border-amber-400 bg-amber-50' : 'border-saffron-100'
+              }`}>
+                <input type="radio" name="inspectMode" className="mt-1" checked={inspectMode === 'ADMIN_OVERRIDE'}
+                       onChange={() => setInspectMode('ADMIN_OVERRIDE')} />
+                <span>
+                  <span className="block font-semibold text-maroon-800">Admin Override Mode</span>
+                  <span className="block text-xs text-maroon-500">Correct or assist with data entry on this committee's behalf. Every change is written to the audit log.</span>
+                </span>
+              </label>
+            </div>
+            <div className="flex gap-3 pt-1">
+              <button onClick={handleStartInspection} className="btn-primary flex-1" disabled={inspecting}>
+                {inspecting ? 'Starting…' : 'Start Inspection'}
+              </button>
+              <button type="button" className="btn-secondary" onClick={() => setInspectTarget(null)}>Cancel</button>
+            </div>
           </div>
         )}
       </Modal>

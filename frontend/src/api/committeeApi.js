@@ -13,3 +13,11 @@ export const committeeApi = {
 export const developerDashboardApi = {
   getOverview: () => axiosClient.get('/developer/dashboard/overview').then((res) => res.data),
 }
+
+// Tenant Inspection ("View as President") - see AuthContext.startInspection/exitInspection
+// for how the returned token gets swapped into the active session.
+export const inspectionApi = {
+  start: (committeeId, mode) => axiosClient.post(`/developer/inspect/${committeeId}`, { mode }).then((res) => res.data),
+  exit: () => axiosClient.post('/developer/inspect/exit').then((res) => res.data),
+  history: () => axiosClient.get('/developer/inspect/history').then((res) => res.data),
+}

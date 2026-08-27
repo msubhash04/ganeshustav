@@ -1,5 +1,6 @@
 package com.ganeshutsav.backend.config;
 
+import com.ganeshutsav.backend.security.InspectionModeFilter;
 import com.ganeshutsav.backend.security.JwtAuthFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -28,6 +29,7 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
+    private final InspectionModeFilter inspectionModeFilter;
 
     @Value("${app.cors.allowed-origins}")
     private String allowedOrigins;
@@ -49,13 +51,16 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**").permitAll()
+                // only login is unauthenticated; self-registration was removed
+                // (see AuthController) and change-password requires a valid JWT
+                .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
                 // public transparency view - read-only, no personal donor details
                 .requestMatchers(HttpMethod.GET, "/api/public/**").permitAll()
                 .requestMatchers("/api/**").authenticated()
                 .anyRequest().permitAll()
             )
-            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterAfter(inspectionModeFilter, JwtAuthFilter.class);
 
         return http.build();
     }

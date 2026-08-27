@@ -1,6 +1,7 @@
 package com.ganeshutsav.backend.dto;
 
 import com.ganeshutsav.backend.entity.CommitteeRole;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -18,6 +19,10 @@ public class MemberDtos {
         private String name;
         @NotBlank
         private String phone;
+        // optional - blank/empty values are normalized to NULL in
+        // MemberService before saving, since the column is unique and
+        // MySQL would otherwise reject a second blank email as a duplicate
+        @Email(message = "Must be a valid email address")
         private String email;
         @NotBlank
         private String username;

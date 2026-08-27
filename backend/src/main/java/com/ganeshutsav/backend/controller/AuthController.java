@@ -1,14 +1,13 @@
 package com.ganeshutsav.backend.controller;
 
+import com.ganeshutsav.backend.dto.AuthDtos.ChangePasswordRequest;
 import com.ganeshutsav.backend.dto.AuthDtos.LoginRequest;
 import com.ganeshutsav.backend.dto.AuthDtos.LoginResponse;
-import com.ganeshutsav.backend.dto.AuthDtos.RegisterRequest;
 import com.ganeshutsav.backend.entity.Committee;
-import com.ganeshutsav.backend.entity.CommitteeRole;
 import com.ganeshutsav.backend.entity.Member;
-import com.ganeshutsav.backend.repository.CommitteeRepository;
 import com.ganeshutsav.backend.repository.MemberRepository;
 import com.ganeshutsav.backend.security.JwtUtil;
+import com.ganeshutsav.backend.security.TenantContext;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -21,9 +20,9 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final MemberRepository memberRepository;
-    private final CommitteeRepository committeeRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final TenantContext tenantContext;
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
@@ -57,43 +56,45 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
-    // Self-service registration for STAFF joining an EXISTING committee only.
-    // PRESIDENT accounts are created exclusively by the Developer alongside
-    // the committee itself (see CommitteeController), and DEVELOPER accounts
-    // are never created through any public endpoint - only via direct DB
+    // SECURITY NOTE: public self-registration (previously here) has been
+    // removed. It accepted a committee's "Ganesh Unique Code" (tenantCode)
+    // as proof of authorization to create a staff login - but that same
+    // code is deliberately displayed to the general public on the
+    // /public/transparency/{tenantCode} page (see PublicController), so
+    // anyone who viewed a committee's donor-transparency page could have
+    // self-registered as TREASURER/SECRETARY/VOLUNTEER for that committee
+    // and gained full CRUD access to its donations/expenses.
+    //
+    // Staff accounts are created exclusively by an authenticated PRESIDENT
+    // via POST /api/members (see MemberController), which is scoped to the
+    // caller's own committee through TenantContext and cannot be spoofed.
+    // PRESIDENT accounts are created by the Developer when the committee
+    // itself is set up (see CommitteeController), and DEVELOPER accounts
+    // are never created through any API endpoint - only via direct DB
     // seeding, by design.
-    @PostMapping("/register")
-    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
-        String requestedRole = request.getRole().toUpperCase();
-        if (requestedRole.equals("PRESIDENT") || requestedRole.equals("DEVELOPER")) {
-            return ResponseEntity.badRequest().body(
-                    "PRESIDENT accounts are created by the Developer when the committee is set up. " +
-                    "DEVELOPER accounts cannot be self-registered.");
+
+    // Lets any authenticated member change their own password. Works for
+    // every role (President, Treasurer, Secretary, Volunteer, Developer),
+    // since it operates on "whoever the JWT says is calling", never on a
+    // client-supplied member id.
+    @PostMapping("/change-password")
+    public ResponseEntity<?> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
+        Member member = tenantContext.getCurrentMember();
+        if (member == null) {
+            return ResponseEntity.status(401).body("Not authenticated");
+        }
+        if (!passwordEncoder.matches(request.getCurrentPassword(), member.getPassword())) {
+            return ResponseEntity.status(400).body("Current password is incorrect");
+        }
+        if (request.getNewPassword().length() < 8) {
+            return ResponseEntity.status(400).body("New password must be at least 8 characters long");
+        }
+        if (passwordEncoder.matches(request.getNewPassword(), member.getPassword())) {
+            return ResponseEntity.status(400).body("New password must be different from the current password");
         }
 
-        if (memberRepository.existsByUsername(request.getUsername())) {
-            return ResponseEntity.badRequest().body("Username already taken");
-        }
-
-        Committee committee = committeeRepository.findByTenantCode(request.getTenantCode()).orElse(null);
-        if (committee == null) {
-            return ResponseEntity.badRequest().body("Invalid Ganesh Unique Code - no committee found with this code");
-        }
-        if (!committee.isActive()) {
-            return ResponseEntity.badRequest().body("This committee's access has been locked and cannot accept new members");
-        }
-
-        Member member = Member.builder()
-                .name(request.getName())
-                .phone(request.getPhone())
-                .email(request.getEmail())
-                .username(request.getUsername())
-                .password(passwordEncoder.encode(request.getPassword()))
-                .role(CommitteeRole.valueOf(requestedRole))
-                .committee(committee)
-                .active(true)
-                .build();
+        member.setPassword(passwordEncoder.encode(request.getNewPassword()));
         memberRepository.save(member);
-        return ResponseEntity.ok("Committee member registered successfully");
+        return ResponseEntity.ok("Password updated successfully");
     }
 }

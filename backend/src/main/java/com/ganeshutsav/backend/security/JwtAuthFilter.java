@@ -1,5 +1,6 @@
 package com.ganeshutsav.backend.security;
 
+import com.ganeshutsav.backend.entity.InspectionMode;
 import com.ganeshutsav.backend.entity.Member;
 import com.ganeshutsav.backend.repository.MemberRepository;
 import jakarta.servlet.FilterChain;
@@ -9,13 +10,14 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -72,12 +74,34 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 }
 
                 String role = jwtUtil.extractRole(token);
-                var authToken = new UsernamePasswordAuthenticationToken(
-                        member, null, List.of(new SimpleGrantedAuthority("ROLE_" + role)));
-                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                List<GrantedAuthority> authorities = new ArrayList<>();
+                authorities.add(new SimpleGrantedAuthority("ROLE_" + role));
+
+                // Tenant Inspection ("View as President") claims - only
+                // ever present on a token minted by
+                // DeveloperInspectionController, never forgeable by a
+                // client since the token is signed. The real role (above)
+                // is always left as DEVELOPER; ADMIN_OVERRIDE additionally
+                // grants ROLE_PRESIDENT so @PreAuthorize("hasRole('PRESIDENT')")
+                // checks on domain endpoints (Festival Years, Loans, etc.)
+                // pass, without weakening those checks for anyone else.
+                Long inspectedCommitteeId = jwtUtil.extractInspectedCommitteeId(token);
+                InspectionDetails details = InspectionDetails.none();
+                if (inspectedCommitteeId != null) {
+                    InspectionMode mode = jwtUtil.extractInspectionMode(token);
+                    String tenantCode = jwtUtil.extractInspectedTenantCode(token);
+                    details = new InspectionDetails(inspectedCommitteeId, tenantCode, mode);
+                    if (mode == InspectionMode.ADMIN_OVERRIDE) {
+                        authorities.add(new SimpleGrantedAuthority("ROLE_PRESIDENT"));
+                    }
+                }
+
+                var authToken = new UsernamePasswordAuthenticationToken(member, null, authorities);
+                authToken.setDetails(details);
                 SecurityContextHolder.getContext().setAuthentication(authToken);
             }
         }
         filterChain.doFilter(request, response);
     }
 }
+
