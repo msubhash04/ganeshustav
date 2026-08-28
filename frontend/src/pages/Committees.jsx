@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus, Search, RefreshCw, Lock, Unlock, LogOut, Eye } from 'lucide-react'
+import { Plus, Search, RefreshCw, Lock, Unlock, Eye } from 'lucide-react'
+import DeveloperLayout from '../components/layout/DeveloperLayout'
 import Modal from '../components/common/Modal'
+import InspectCommitteeModal from '../components/common/InspectCommitteeModal'
 import { committeeApi } from '../api/committeeApi'
-import { useAuth } from '../context/AuthContext'
 import { formatDate } from '../utils/format'
 
 const emptyForm = {
@@ -12,9 +12,6 @@ const emptyForm = {
 }
 
 export default function Committees() {
-  const { user, logout, startInspection } = useAuth()
-  const navigate = useNavigate()
-
   const [committees, setCommittees] = useState([])
   const [loading, setLoading] = useState(true)
   const [filters, setFilters] = useState({ query: '', city: '', state: '' })
@@ -23,10 +20,7 @@ export default function Committees() {
   const [form, setForm] = useState(emptyForm)
   const [submitting, setSubmitting] = useState(false)
   const [newCodeInfo, setNewCodeInfo] = useState(null)
-
   const [inspectTarget, setInspectTarget] = useState(null)
-  const [inspectMode, setInspectMode] = useState('READ_ONLY')
-  const [inspecting, setInspecting] = useState(false)
 
   const load = (appliedFilters) => {
     setLoading(true)
@@ -38,8 +32,6 @@ export default function Committees() {
   useEffect(() => load(filters), []) // eslint-disable-line
 
   const handleFilterSubmit = (e) => { e.preventDefault(); load(filters) }
-
-  const handleLogout = () => { logout(); navigate('/login') }
 
   const handleCreate = async (e) => {
     e.preventDefault()
@@ -74,125 +66,94 @@ export default function Committees() {
     load(filters)
   }
 
-  const handleStartInspection = async () => {
-    if (!inspectTarget) return
-    setInspecting(true)
-    try {
-      await startInspection(inspectTarget.id, inspectMode)
-      setInspectTarget(null)
-      navigate('/')
-    } catch (err) {
-      alert(err?.response?.data?.error || err?.response?.data || 'Could not start inspection')
-    } finally {
-      setInspecting(false)
-    }
-  }
-
   return (
-    <div className="min-h-screen bg-cream">
-      <header className="bg-gradient-to-r from-maroon-800 to-maroon-900 text-white px-4 md:px-8 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/')} className="text-saffron-100 hover:text-white">
-            <ArrowLeft size={20} />
-          </button>
-          <div>
-            <p className="font-display font-bold leading-tight">Committee Directory</p>
-            <p className="text-xs text-saffron-200">Developer Super Admin</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-saffron-100 hidden sm:inline">{user?.name}</span>
-          <button onClick={handleLogout} className="text-saffron-100 hover:text-white" aria-label="Logout">
-            <LogOut size={20} />
-          </button>
-        </div>
-      </header>
-
-      <main className="max-w-6xl mx-auto px-4 md:px-8 py-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+    <DeveloperLayout>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+        <div>
           <h1 className="page-title">All Ganesh Committees</h1>
-          <button onClick={() => setFormOpen(true)} className="btn-primary inline-flex items-center gap-2 w-fit">
-            <Plus size={18} /> Register New Committee
-          </button>
+          <p className="text-sm text-maroon-400 mt-0.5">{committees.length} committee{committees.length === 1 ? '' : 's'} on the platform</p>
         </div>
+        <button onClick={() => setFormOpen(true)} className="btn-primary inline-flex items-center gap-2 w-fit">
+          <Plus size={18} /> Register New Committee
+        </button>
+      </div>
 
-        <form onSubmit={handleFilterSubmit} className="card mb-6 grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
-          <div>
-            <label className="label-text">Search (name or code)</label>
-            <input className="input-field" value={filters.query} onChange={(e) => setFilters({ ...filters, query: e.target.value })} />
-          </div>
-          <div>
-            <label className="label-text">City</label>
-            <input className="input-field" value={filters.city} onChange={(e) => setFilters({ ...filters, city: e.target.value })} />
-          </div>
-          <div>
-            <label className="label-text">State</label>
-            <input className="input-field" value={filters.state} onChange={(e) => setFilters({ ...filters, state: e.target.value })} />
-          </div>
-          <button type="submit" className="btn-secondary inline-flex items-center justify-center gap-2">
-            <Search size={16} /> Filter
-          </button>
-        </form>
+      <form onSubmit={handleFilterSubmit} className="card mb-6 grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
+        <div>
+          <label className="label-text">Search (name or code)</label>
+          <input className="input-field" value={filters.query} onChange={(e) => setFilters({ ...filters, query: e.target.value })} />
+        </div>
+        <div>
+          <label className="label-text">City</label>
+          <input className="input-field" value={filters.city} onChange={(e) => setFilters({ ...filters, city: e.target.value })} />
+        </div>
+        <div>
+          <label className="label-text">State</label>
+          <input className="input-field" value={filters.state} onChange={(e) => setFilters({ ...filters, state: e.target.value })} />
+        </div>
+        <button type="submit" className="btn-secondary inline-flex items-center justify-center gap-2">
+          <Search size={16} /> Filter
+        </button>
+      </form>
 
-        <div className="card">
-          {loading ? (
-            <p className="text-maroon-400">Loading…</p>
-          ) : committees.length === 0 ? (
-            <p className="text-sm text-maroon-400 py-8 text-center">No committees registered yet.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-maroon-500 border-b border-saffron-100">
-                    <th className="py-2 pr-4">Committee</th>
-                    <th className="py-2 pr-4">Code</th>
-                    <th className="py-2 pr-4">City / State</th>
-                    <th className="py-2 pr-4">Members</th>
-                    <th className="py-2 pr-4">Registered</th>
-                    <th className="py-2 pr-4">Status</th>
-                    <th className="py-2 pr-4 text-right">Actions</th>
+      <div className="card">
+        {loading ? (
+          <p className="text-maroon-400">Loading…</p>
+        ) : committees.length === 0 ? (
+          <p className="text-sm text-maroon-400 py-8 text-center">No committees registered yet.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-maroon-500 border-b border-saffron-100">
+                  <th className="py-2 pr-4">Committee</th>
+                  <th className="py-2 pr-4">Code</th>
+                  <th className="py-2 pr-4">City / State</th>
+                  <th className="py-2 pr-4">Members</th>
+                  <th className="py-2 pr-4">Registered</th>
+                  <th className="py-2 pr-4">Status</th>
+                  <th className="py-2 pr-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {committees.map((c) => (
+                  <tr key={c.id} className="border-b border-saffron-50 last:border-0 hover:bg-saffron-50/40 transition">
+                    <td className="py-2.5 pr-4 font-medium text-maroon-800">{c.name}</td>
+                    <td className="py-2.5 pr-4 text-maroon-500 font-mono text-xs">{c.tenantCode}</td>
+                    <td className="py-2.5 pr-4 text-maroon-500">{[c.city, c.state].filter(Boolean).join(', ') || '—'}</td>
+                    <td className="py-2.5 pr-4 text-maroon-500">{c.memberCount}</td>
+                    <td className="py-2.5 pr-4 text-maroon-500">{formatDate(c.createdAt)}</td>
+                    <td className="py-2.5 pr-4">
+                      <span className={`badge ${c.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                        {c.active ? 'Active' : 'Locked'}
+                      </span>
+                    </td>
+                    <td className="py-2.5 pr-4">
+                      <div className="flex justify-end items-center gap-2">
+                        <button
+                          onClick={() => setInspectTarget(c)}
+                          disabled={!c.active}
+                          title={c.active ? 'Inspect committee' : 'Unlock this committee to inspect it'}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-saffron-50 text-saffron-700 hover:bg-saffron-100 font-medium text-xs transition disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          <Eye size={14} /> Inspect
+                        </button>
+                        <button onClick={() => handleRegenerateCode(c)} className="p-1.5 rounded-lg text-maroon-400 hover:text-saffron-600 hover:bg-saffron-50" title="Regenerate code">
+                          <RefreshCw size={16} />
+                        </button>
+                        <button onClick={() => handleToggleLock(c)} className="p-1.5 rounded-lg text-maroon-400 hover:text-maroon-700 hover:bg-saffron-50"
+                                title={c.active ? 'Lock committee' : 'Unlock committee'}>
+                          {c.active ? <Lock size={16} /> : <Unlock size={16} />}
+                        </button>
+                      </div>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {committees.map((c) => (
-                    <tr key={c.id} className="border-b border-saffron-50 last:border-0">
-                      <td className="py-2.5 pr-4 font-medium text-maroon-800">{c.name}</td>
-                      <td className="py-2.5 pr-4 text-maroon-500 font-mono text-xs">{c.tenantCode}</td>
-                      <td className="py-2.5 pr-4 text-maroon-500">{[c.city, c.state].filter(Boolean).join(', ') || '—'}</td>
-                      <td className="py-2.5 pr-4 text-maroon-500">{c.memberCount}</td>
-                      <td className="py-2.5 pr-4 text-maroon-500">{formatDate(c.createdAt)}</td>
-                      <td className="py-2.5 pr-4">
-                        <span className={`badge ${c.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                          {c.active ? 'Active' : 'Locked'}
-                        </span>
-                      </td>
-                      <td className="py-2.5 pr-4">
-                        <div className="flex justify-end gap-2">
-                          <button
-                            onClick={() => { setInspectTarget(c); setInspectMode('READ_ONLY') }}
-                            className="text-maroon-400 hover:text-saffron-600 disabled:opacity-30"
-                            title="Inspect committee"
-                            disabled={!c.active}
-                          >
-                            <Eye size={16} />
-                          </button>
-                          <button onClick={() => handleRegenerateCode(c)} className="text-maroon-400 hover:text-saffron-600" title="Regenerate code">
-                            <RefreshCw size={16} />
-                          </button>
-                          <button onClick={() => handleToggleLock(c)} className="text-maroon-400 hover:text-maroon-700"
-                                  title={c.active ? 'Lock committee' : 'Unlock committee'}>
-                            {c.active ? <Lock size={16} /> : <Unlock size={16} />}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      </main>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       {/* Create committee modal */}
       <Modal open={formOpen} onClose={() => setFormOpen(false)} title="Register New Ganesh Committee" maxWidth="max-w-xl">
@@ -261,46 +222,7 @@ export default function Committees() {
         )}
       </Modal>
 
-      {/* Tenant Inspection ("View as President") mode selection */}
-      <Modal open={!!inspectTarget} onClose={() => setInspectTarget(null)} title="Inspect Committee">
-        {inspectTarget && (
-          <div className="space-y-4">
-            <p className="text-sm text-maroon-600">
-              You're about to view <strong>{inspectTarget.name}</strong>'s full dashboard exactly as their President
-              sees it. Staff management and committee settings stay off-limits either way — exit inspection to
-              change those from here.
-            </p>
-            <div className="space-y-2">
-              <label className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer ${
-                inspectMode === 'READ_ONLY' ? 'border-saffron-400 bg-saffron-50' : 'border-saffron-100'
-              }`}>
-                <input type="radio" name="inspectMode" className="mt-1" checked={inspectMode === 'READ_ONLY'}
-                       onChange={() => setInspectMode('READ_ONLY')} />
-                <span>
-                  <span className="block font-semibold text-maroon-800">Read-Only Mode</span>
-                  <span className="block text-xs text-maroon-500">View every screen and record. Any attempt to add, edit, or delete is blocked.</span>
-                </span>
-              </label>
-              <label className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer ${
-                inspectMode === 'ADMIN_OVERRIDE' ? 'border-amber-400 bg-amber-50' : 'border-saffron-100'
-              }`}>
-                <input type="radio" name="inspectMode" className="mt-1" checked={inspectMode === 'ADMIN_OVERRIDE'}
-                       onChange={() => setInspectMode('ADMIN_OVERRIDE')} />
-                <span>
-                  <span className="block font-semibold text-maroon-800">Admin Override Mode</span>
-                  <span className="block text-xs text-maroon-500">Correct or assist with data entry on this committee's behalf. Every change is written to the audit log.</span>
-                </span>
-              </label>
-            </div>
-            <div className="flex gap-3 pt-1">
-              <button onClick={handleStartInspection} className="btn-primary flex-1" disabled={inspecting}>
-                {inspecting ? 'Starting…' : 'Start Inspection'}
-              </button>
-              <button type="button" className="btn-secondary" onClick={() => setInspectTarget(null)}>Cancel</button>
-            </div>
-          </div>
-        )}
-      </Modal>
-    </div>
+      <InspectCommitteeModal committee={inspectTarget} onClose={() => setInspectTarget(null)} />
+    </DeveloperLayout>
   )
 }

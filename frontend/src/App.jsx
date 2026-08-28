@@ -14,6 +14,7 @@ import Loans from './pages/Loans'
 import Sponsorships from './pages/Sponsorships'
 import DeveloperDashboard from './pages/DeveloperDashboard'
 import Committees from './pages/Committees'
+import InspectionLog from './pages/InspectionLog'
 import { useAuth } from './context/AuthContext'
 
 // The Developer (Super Admin) role has no committee, so every
@@ -32,6 +33,7 @@ export default function App() {
 
       <Route path="/" element={<ProtectedRoute><RoleRoot /></ProtectedRoute>} />
       <Route path="/committees" element={<ProtectedRoute><Committees /></ProtectedRoute>} />
+      <Route path="/inspection-log" element={<ProtectedRoute><InspectionLog /></ProtectedRoute>} />
       <Route path="/festival-setup" element={<ProtectedRoute><FestivalSetup /></ProtectedRoute>} />
       <Route path="/collections" element={<ProtectedRoute><Collections /></ProtectedRoute>} />
       <Route path="/expenses" element={<ProtectedRoute><Expenses /></ProtectedRoute>} />
