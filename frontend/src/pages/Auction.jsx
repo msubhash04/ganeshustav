@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { Plus, Gavel, Trash2 } from 'lucide-react'
 import Layout from '../components/layout/Layout'
 import Modal from '../components/common/Modal'
+import ResponsiveTable, { TableCard, CardActions, CardActionButton } from '../components/common/ResponsiveTable'
 import { auctionApi } from '../api/auctionApi'
 import { festivalYearApi } from '../api/festivalYearApi'
 import { formatINR } from '../utils/format'
@@ -97,43 +98,63 @@ export default function Auction() {
       <div className="card">
         {loading ? (
           <p className="text-maroon-400">Loading…</p>
-        ) : items.length === 0 ? (
-          <p className="text-sm text-maroon-400 py-8 text-center">No auction items recorded yet.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-maroon-500 border-b border-saffron-100">
-                  <th className="py-2 pr-4">Day</th>
-                  <th className="py-2 pr-4">Item</th>
-                  <th className="py-2 pr-4">Winner</th>
-                  <th className="py-2 pr-4">Status</th>
-                  <th className="py-2 pr-4 text-right">Bid Amount</th>
-                  <th className="py-2 pr-4 text-right">Actions</th>
+        <ResponsiveTable
+          data={items}
+          emptyMessage="No auction items recorded yet."
+          renderCard={(item) => (
+            <TableCard>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-semibold text-maroon-800 truncate">{item.itemName}</p>
+                  <p className="text-xs text-maroon-400">{item.dayNumber ? `Day ${item.dayNumber}` : 'Final Day'} · Winner: {item.winnerName}</p>
+                </div>
+                <p className="text-lg font-bold text-saffron-600 shrink-0">{formatINR(item.bidAmount)}</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 mt-2.5">
+                <span className={`badge ${item.paymentStatus === 'PAID' ? 'bg-green-100 text-green-700' : 'bg-gold-500/10 text-gold-600'}`}>
+                  {item.paymentStatus}{item.paymentMode ? ` · ${item.paymentMode.replace('_', ' ')}` : ''}
+                </span>
+              </div>
+              <CardActions>
+                <CardActionButton onClick={() => handleDelete(item)} icon={Trash2} label="Delete" tone="danger" />
+              </CardActions>
+            </TableCard>
+          )}
+        >
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-maroon-500 border-b border-saffron-100">
+                <th className="py-2 pr-4">Day</th>
+                <th className="py-2 pr-4">Item</th>
+                <th className="py-2 pr-4">Winner</th>
+                <th className="py-2 pr-4">Status</th>
+                <th className="py-2 pr-4 text-right">Bid Amount</th>
+                <th className="py-2 pr-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item) => (
+                <tr key={item.id} className="border-b border-saffron-50 last:border-0">
+                  <td className="py-2.5 pr-4 text-maroon-500">{item.dayNumber ? `Day ${item.dayNumber}` : 'Final Day'}</td>
+                  <td className="py-2.5 pr-4 font-medium text-maroon-800">{item.itemName}</td>
+                  <td className="py-2.5 pr-4 text-maroon-500">{item.winnerName}</td>
+                  <td className="py-2.5 pr-4">
+                    <span className={`badge ${item.paymentStatus === 'PAID' ? 'bg-green-100 text-green-700' : 'bg-gold-500/10 text-gold-600'}`}>
+                      {item.paymentStatus}{item.paymentMode ? ` · ${item.paymentMode.replace('_', ' ')}` : ''}
+                    </span>
+                  </td>
+                  <td className="py-2.5 pr-4 text-right font-semibold text-saffron-600">{formatINR(item.bidAmount)}</td>
+                  <td className="py-2.5 pr-4 text-right">
+                    <button onClick={() => handleDelete(item)} className="text-maroon-400 hover:text-maroon-700">
+                      <Trash2 size={16} />
+                    </button>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {items.map((item) => (
-                  <tr key={item.id} className="border-b border-saffron-50 last:border-0">
-                    <td className="py-2.5 pr-4 text-maroon-500">{item.dayNumber ? `Day ${item.dayNumber}` : 'Final Day'}</td>
-                    <td className="py-2.5 pr-4 font-medium text-maroon-800">{item.itemName}</td>
-                    <td className="py-2.5 pr-4 text-maroon-500">{item.winnerName}</td>
-                    <td className="py-2.5 pr-4">
-                      <span className={`badge ${item.paymentStatus === 'PAID' ? 'bg-green-100 text-green-700' : 'bg-gold-500/10 text-gold-600'}`}>
-                        {item.paymentStatus}{item.paymentMode ? ` · ${item.paymentMode.replace('_', ' ')}` : ''}
-                      </span>
-                    </td>
-                    <td className="py-2.5 pr-4 text-right font-semibold text-saffron-600">{formatINR(item.bidAmount)}</td>
-                    <td className="py-2.5 pr-4 text-right">
-                      <button onClick={() => handleDelete(item)} className="text-maroon-400 hover:text-maroon-700">
-                        <Trash2 size={16} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
+        </ResponsiveTable>
         )}
       </div>
 

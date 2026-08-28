@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { Plus, Landmark, ChevronDown, ChevronUp } from 'lucide-react'
 import Layout from '../components/layout/Layout'
 import Modal from '../components/common/Modal'
+import ResponsiveTable, { TableCard } from '../components/common/ResponsiveTable'
 import { loanApi } from '../api/loanApi'
 import { formatINR, formatDate } from '../utils/format'
 import { useAuth } from '../context/AuthContext'
@@ -110,11 +111,11 @@ export default function Loans() {
         <div className="space-y-3">
           {loans.map((loan) => (
             <div key={loan.id} className="card">
-              <div className="flex items-center justify-between cursor-pointer" onClick={() => setExpandedId(expandedId === loan.id ? null : loan.id)}>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-maroon-800">{loan.borrowerName}</h3>
-                    <span className={`badge ${loan.status === 'ACTIVE' ? 'bg-saffron-100 text-saffron-700' : 'bg-green-100 text-green-700'}`}>
+              <div className="flex items-center justify-between gap-3 cursor-pointer" onClick={() => setExpandedId(expandedId === loan.id ? null : loan.id)}>
+                <div className="min-w-0">
+                  <div className="flex items-center flex-wrap gap-2">
+                    <h3 className="font-semibold text-maroon-800 truncate">{loan.borrowerName}</h3>
+                    <span className={`badge shrink-0 ${loan.status === 'ACTIVE' ? 'bg-saffron-100 text-saffron-700' : 'bg-green-100 text-green-700'}`}>
                       {loan.status}
                     </span>
                   </div>
@@ -123,9 +124,9 @@ export default function Loans() {
                     Borrowed {formatINR(loan.originalPrincipal)} on {formatDate(loan.loanDate)} @ {loan.monthlyInterestRatePercent}%/month
                   </p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 shrink-0">
                   <div className="text-right">
-                    <p className="text-xs text-maroon-500">Current Principal</p>
+                    <p className="text-xs text-maroon-500 whitespace-nowrap">Current Principal</p>
                     <p className="font-bold text-maroon-800">{formatINR(loan.currentPrincipal)}</p>
                   </div>
                   {expandedId === loan.id ? <ChevronUp size={18} className="text-maroon-400" /> : <ChevronDown size={18} className="text-maroon-400" />}
@@ -149,7 +150,32 @@ export default function Loans() {
                   </div>
 
                   {loan.repayments?.length > 0 ? (
-                    <div className="overflow-x-auto">
+                    <ResponsiveTable
+                      data={loan.repayments}
+                      emptyMessage="No repayments recorded yet."
+                      renderCard={(r) => (
+                        <TableCard>
+                          <div className="flex items-start justify-between gap-3">
+                            <p className="text-sm text-maroon-500">{formatDate(r.paymentDate)}</p>
+                            <p className="text-base font-bold text-maroon-800 shrink-0">{formatINR(r.paymentAmount)}</p>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 mt-2.5 text-xs">
+                            <div className="flex justify-between">
+                              <span className="text-maroon-400">Interest</span>
+                              <span className="text-gold-600 font-medium">{formatINR(r.interestPortion)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-maroon-400">Principal</span>
+                              <span className="text-saffron-600 font-medium">{formatINR(r.principalPortion)}</span>
+                            </div>
+                            <div className="flex justify-between col-span-2 pt-1.5 border-t border-saffron-50">
+                              <span className="text-maroon-400">Balance After</span>
+                              <span className="text-maroon-700 font-semibold">{formatINR(r.remainingPrincipalAfter)}</span>
+                            </div>
+                          </div>
+                        </TableCard>
+                      )}
+                    >
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="text-left text-maroon-500 border-b border-saffron-100">
@@ -172,7 +198,7 @@ export default function Loans() {
                           ))}
                         </tbody>
                       </table>
-                    </div>
+                    </ResponsiveTable>
                   ) : (
                     <p className="text-sm text-maroon-400">No repayments recorded yet.</p>
                   )}

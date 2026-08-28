@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, Tag } from 'lucide-react'
+import { Plus, Pencil, Trash2 } from 'lucide-react'
 import Modal from '../common/Modal'
+import ResponsiveTable, { TableCard, CardActions, CardActionButton } from '../common/ResponsiveTable'
 import { sponsorshipCategoryApi } from '../../api/sponsorshipApi'
 
 const emptyForm = { name: '', description: '', active: true }
@@ -62,13 +63,28 @@ export default function CategoriesTab() {
 
       {loading ? (
         <p className="text-maroon-400">Loading…</p>
-      ) : categories.length === 0 ? (
-        <div className="text-center py-10">
-          <Tag className="mx-auto text-saffron-400 mb-2" size={28} />
-          <p className="text-maroon-500 text-sm">No sponsorship categories yet.</p>
-        </div>
       ) : (
-        <div className="overflow-x-auto">
+        <ResponsiveTable
+          data={categories}
+          emptyMessage="No sponsorship categories yet."
+          renderCard={(c) => (
+            <TableCard>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-semibold text-maroon-800 truncate">{c.name}</p>
+                  {c.description && <p className="text-xs text-maroon-400 mt-0.5">{c.description}</p>}
+                </div>
+                <span className={`badge shrink-0 ${c.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                  {c.active ? 'Active' : 'Inactive'}
+                </span>
+              </div>
+              <CardActions>
+                <CardActionButton onClick={() => openEdit(c)} icon={Pencil} label="Edit" />
+                <CardActionButton onClick={() => handleDelete(c)} icon={Trash2} label="Delete" tone="danger" />
+              </CardActions>
+            </TableCard>
+          )}
+        >
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-maroon-500 border-b border-saffron-100">
@@ -102,7 +118,7 @@ export default function CategoriesTab() {
               ))}
             </tbody>
           </table>
-        </div>
+        </ResponsiveTable>
       )}
 
       <Modal open={formOpen} onClose={() => setFormOpen(false)} title={editing ? 'Edit Category' : 'Add Sponsorship Category'}>

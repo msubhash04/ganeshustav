@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { ScrollText, Eye, ShieldAlert } from 'lucide-react'
 import DeveloperLayout from '../components/layout/DeveloperLayout'
+import ResponsiveTable, { TableCard } from '../components/common/ResponsiveTable'
 import { inspectionApi } from '../api/committeeApi'
 
 function formatDateTime(value) {
@@ -57,10 +58,30 @@ export default function InspectionLog() {
       <div className="card">
         {loading ? (
           <p className="text-maroon-400">Loading…</p>
-        ) : filtered.length === 0 ? (
-          <p className="text-sm text-maroon-400 py-8 text-center">No inspection activity recorded yet.</p>
         ) : (
-          <div className="overflow-x-auto">
+          <ResponsiveTable
+            data={filtered}
+            emptyMessage="No inspection activity recorded yet."
+            renderCard={(e) => (
+              <TableCard>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-maroon-800 truncate">{e.developerUsername}</p>
+                    <p className="text-xs text-maroon-400 font-mono">{e.tenantCode}</p>
+                  </div>
+                  <span className={`badge shrink-0 ${e.mode === 'ADMIN_OVERRIDE' ? 'bg-amber-100 text-amber-700' : 'bg-maroon-50 text-maroon-600'}`}>
+                    {e.mode === 'ADMIN_OVERRIDE'
+                      ? <span className="inline-flex items-center gap-1"><ShieldAlert size={12} /> Override</span>
+                      : <span className="inline-flex items-center gap-1"><Eye size={12} /> Read-Only</span>}
+                  </span>
+                </div>
+                <div className="mt-2.5 text-xs text-maroon-500 space-y-1">
+                  <p>{EVENT_LABELS[e.eventType] || e.eventType} · {formatDateTime(e.occurredAt)}</p>
+                  {e.httpMethod && <p className="font-mono text-maroon-400">{e.httpMethod} {e.path}</p>}
+                </div>
+              </TableCard>
+            )}
+          >
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-maroon-500 border-b border-saffron-100">
@@ -93,7 +114,7 @@ export default function InspectionLog() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </ResponsiveTable>
         )}
       </div>
     </DeveloperLayout>

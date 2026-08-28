@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { Plus, UserX, Trash2 } from 'lucide-react'
 import Layout from '../components/layout/Layout'
 import Modal from '../components/common/Modal'
+import ResponsiveTable, { TableCard, CardActions, CardActionButton } from '../components/common/ResponsiveTable'
 import { memberApi } from '../api/reportApi'
 
 const ROLES = ['PRESIDENT', 'TREASURER', 'SECRETARY', 'VOLUNTEER']
@@ -67,10 +68,31 @@ export default function Members() {
       <div className="card">
         {loading ? (
           <p className="text-maroon-400">Loading…</p>
-        ) : members.length === 0 ? (
-          <p className="text-sm text-maroon-400 py-8 text-center">No committee members yet.</p>
         ) : (
-          <div className="overflow-x-auto">
+          <ResponsiveTable
+            data={members}
+            emptyMessage="No committee members yet."
+            renderCard={(m) => (
+              <TableCard>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-maroon-800 truncate">{m.name}</p>
+                    <p className="text-xs text-maroon-400">{m.phone} · @{m.username}</p>
+                  </div>
+                  <span className={`badge shrink-0 ${ROLE_STYLES[m.role]}`}>{m.role}</span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 mt-2.5">
+                  <span className={`badge ${m.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                    {m.active ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+                <CardActions>
+                  <CardActionButton onClick={() => handleDeactivate(m)} icon={UserX} label="Deactivate" />
+                  <CardActionButton onClick={() => handleDelete(m)} icon={Trash2} label="Remove" tone="danger" />
+                </CardActions>
+              </TableCard>
+            )}
+          >
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-maroon-500 border-b border-saffron-100">
@@ -108,7 +130,7 @@ export default function Members() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </ResponsiveTable>
         )}
       </div>
 

@@ -2,16 +2,38 @@ import React from 'react'
 import { Pencil, Trash2, Paperclip } from 'lucide-react'
 import { formatINR, formatDate } from '../../utils/format'
 import { EXPENSE_CATEGORIES } from '../../api/expenseApi'
+import ResponsiveTable, { TableCard, CardActions, CardActionButton } from '../common/ResponsiveTable'
 
 const categoryLabel = (value) => EXPENSE_CATEGORIES.find((c) => c.value === value)?.label || value
 
 export default function ExpenseTable({ expenses, onEdit, onDelete }) {
-  if (!expenses || expenses.length === 0) {
-    return <p className="text-sm text-maroon-400 py-8 text-center">No expenses found. Try adjusting your filters or add a new one.</p>
-  }
-
   return (
-    <div className="overflow-x-auto">
+    <ResponsiveTable
+      data={expenses}
+      emptyMessage="No expenses found. Try adjusting your filters or add a new one."
+      renderCard={(e) => (
+        <TableCard>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="font-semibold text-maroon-800 truncate flex items-center gap-1.5">
+                {e.description}
+                {e.billFilePath && <Paperclip size={13} className="text-maroon-400 shrink-0" />}
+              </p>
+              <p className="text-xs text-maroon-400">{e.paidTo}</p>
+            </div>
+            <p className="text-lg font-bold text-maroon-700 shrink-0">{formatINR(e.amount)}</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 mt-2.5">
+            <span className="badge bg-maroon-100 text-maroon-700">{categoryLabel(e.category)}</span>
+            <span className="text-xs text-maroon-500">{formatDate(e.expenseDate)}</span>
+          </div>
+          <CardActions>
+            <CardActionButton onClick={() => onEdit(e)} icon={Pencil} label="Edit" />
+            <CardActionButton onClick={() => onDelete(e)} icon={Trash2} label="Delete" tone="danger" />
+          </CardActions>
+        </TableCard>
+      )}
+    >
       <table className="w-full text-sm">
         <thead>
           <tr className="text-left text-maroon-500 border-b border-saffron-100">
@@ -52,6 +74,6 @@ export default function ExpenseTable({ expenses, onEdit, onDelete }) {
           ))}
         </tbody>
       </table>
-    </div>
+    </ResponsiveTable>
   )
 }

@@ -1,6 +1,7 @@
 import React from 'react'
 import { Printer, Pencil, Trash2 } from 'lucide-react'
 import { formatINR, formatDate } from '../../utils/format'
+import ResponsiveTable, { TableCard, CardActions, CardActionButton } from '../common/ResponsiveTable'
 
 const MODE_STYLES = {
   CASH: 'bg-gold-500/10 text-gold-600',
@@ -10,12 +11,34 @@ const MODE_STYLES = {
 }
 
 export default function DonationTable({ donations, onEdit, onDelete, onPrint }) {
-  if (!donations || donations.length === 0) {
-    return <p className="text-sm text-maroon-400 py-8 text-center">No donations found. Try adjusting your filters or add a new one.</p>
-  }
-
   return (
-    <div className="overflow-x-auto">
+    <ResponsiveTable
+      data={donations}
+      emptyMessage="No donations found. Try adjusting your filters or add a new one."
+      renderCard={(d) => (
+        <TableCard>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="font-semibold text-maroon-800 truncate">{d.donorName}</p>
+              <p className="text-xs text-maroon-400 font-mono">{d.receiptNumber}</p>
+            </div>
+            <p className="text-lg font-bold text-saffron-600 shrink-0">{formatINR(d.amount)}</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 mt-2.5">
+            <span className={`badge ${MODE_STYLES[d.paymentMode] || 'bg-gray-100 text-gray-700'}`}>
+              {d.paymentMode?.replace('_', ' ')}
+            </span>
+            <span className="text-xs text-maroon-500">{formatDate(d.donationDate)}</span>
+            {d.phoneNumber && <span className="text-xs text-maroon-500">{d.phoneNumber}</span>}
+          </div>
+          <CardActions>
+            <CardActionButton onClick={() => onPrint(d)} icon={Printer} label="Print" />
+            <CardActionButton onClick={() => onEdit(d)} icon={Pencil} label="Edit" />
+            <CardActionButton onClick={() => onDelete(d)} icon={Trash2} label="Delete" tone="danger" />
+          </CardActions>
+        </TableCard>
+      )}
+    >
       <table className="w-full text-sm">
         <thead>
           <tr className="text-left text-maroon-500 border-b border-saffron-100">
@@ -58,6 +81,6 @@ export default function DonationTable({ donations, onEdit, onDelete, onPrint }) 
           ))}
         </tbody>
       </table>
-    </div>
+    </ResponsiveTable>
   )
 }

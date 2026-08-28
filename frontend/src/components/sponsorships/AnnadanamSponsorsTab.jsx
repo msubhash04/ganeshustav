@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { Plus, Pencil, Trash2, Soup } from 'lucide-react'
 import Modal from '../common/Modal'
+import ResponsiveTable, { TableCard, CardActions, CardActionButton } from '../common/ResponsiveTable'
 import { annadanamSponsorApi } from '../../api/sponsorshipApi'
 import { festivalYearApi } from '../../api/festivalYearApi'
 import { formatINR } from '../../utils/format'
@@ -96,13 +97,32 @@ export default function AnnadanamSponsorsTab() {
 
       {loading ? (
         <p className="text-maroon-400">Loading…</p>
-      ) : sponsors.length === 0 ? (
-        <div className="text-center py-10">
-          <Soup className="mx-auto text-saffron-400 mb-2" size={28} />
-          <p className="text-maroon-500 text-sm">No Annadanam sponsors recorded yet.</p>
-        </div>
       ) : (
-        <div className="overflow-x-auto">
+        <ResponsiveTable
+          data={sponsors}
+          emptyMessage="No Annadanam sponsors recorded yet."
+          renderCard={(s) => (
+            <TableCard>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-semibold text-maroon-800 truncate">{s.sponsorName}</p>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <span className="badge bg-gold-500/10 text-gold-600">Day {s.dayNumber}</span>
+                    {s.mealSlot && <span className="text-xs text-maroon-400">{s.mealSlot}</span>}
+                  </div>
+                </div>
+                {s.contributionAmount ? (
+                  <p className="text-base font-bold text-saffron-600 shrink-0">{formatINR(s.contributionAmount)}</p>
+                ) : null}
+              </div>
+              {s.contactInfo && <p className="text-xs text-maroon-500 mt-2.5">{s.contactInfo}</p>}
+              <CardActions>
+                <CardActionButton onClick={() => openEdit(s)} icon={Pencil} label="Edit" />
+                <CardActionButton onClick={() => handleDelete(s)} icon={Trash2} label="Delete" tone="danger" />
+              </CardActions>
+            </TableCard>
+          )}
+        >
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-maroon-500 border-b border-saffron-100">
@@ -140,7 +160,7 @@ export default function AnnadanamSponsorsTab() {
               ))}
             </tbody>
           </table>
-        </div>
+        </ResponsiveTable>
       )}
 
       <Modal open={formOpen} onClose={() => setFormOpen(false)} title={editing ? 'Edit Annadanam Sponsor' : 'Add Annadanam Sponsor'}>

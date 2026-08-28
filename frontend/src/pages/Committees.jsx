@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { Plus, Search, RefreshCw, Lock, Unlock, Eye } from 'lucide-react'
 import DeveloperLayout from '../components/layout/DeveloperLayout'
 import Modal from '../components/common/Modal'
+import ResponsiveTable, { TableCard, CardActions, CardActionButton } from '../components/common/ResponsiveTable'
 import InspectCommitteeModal from '../components/common/InspectCommitteeModal'
 import { committeeApi } from '../api/committeeApi'
 import { formatDate } from '../utils/format'
@@ -99,10 +100,38 @@ export default function Committees() {
       <div className="card">
         {loading ? (
           <p className="text-maroon-400">Loading…</p>
-        ) : committees.length === 0 ? (
-          <p className="text-sm text-maroon-400 py-8 text-center">No committees registered yet.</p>
         ) : (
-          <div className="overflow-x-auto">
+          <ResponsiveTable
+            data={committees}
+            emptyMessage="No committees registered yet."
+            renderCard={(c) => (
+              <TableCard>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-maroon-800 truncate">{c.name}</p>
+                    <p className="text-xs text-maroon-400 font-mono">{c.tenantCode}</p>
+                  </div>
+                  <span className={`badge shrink-0 ${c.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                    {c.active ? 'Active' : 'Locked'}
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-maroon-500 mt-2.5">
+                  <span>{[c.city, c.state].filter(Boolean).join(', ') || '—'}</span>
+                  <span>{c.memberCount} member{c.memberCount === 1 ? '' : 's'}</span>
+                  <span>Registered {formatDate(c.createdAt)}</span>
+                </div>
+                <CardActions>
+                  <CardActionButton onClick={() => setInspectTarget(c)} icon={Eye} label="Inspect" />
+                  <CardActionButton onClick={() => handleRegenerateCode(c)} icon={RefreshCw} label="Regenerate Code" />
+                  <CardActionButton
+                    onClick={() => handleToggleLock(c)}
+                    icon={c.active ? Lock : Unlock}
+                    label={c.active ? 'Lock' : 'Unlock'}
+                  />
+                </CardActions>
+              </TableCard>
+            )}
+          >
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-maroon-500 border-b border-saffron-100">
@@ -151,7 +180,7 @@ export default function Committees() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </ResponsiveTable>
         )}
       </div>
 

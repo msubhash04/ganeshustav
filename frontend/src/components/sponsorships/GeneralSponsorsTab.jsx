@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, Users2 } from 'lucide-react'
+import { Plus, Pencil, Trash2 } from 'lucide-react'
 import Modal from '../common/Modal'
+import ResponsiveTable, { TableCard, CardActions, CardActionButton } from '../common/ResponsiveTable'
 import { generalSponsorApi, sponsorshipCategoryApi } from '../../api/sponsorshipApi'
 import { formatINR } from '../../utils/format'
 
@@ -91,13 +92,34 @@ export default function GeneralSponsorsTab() {
 
       {loading ? (
         <p className="text-maroon-400">Loading…</p>
-      ) : sponsors.length === 0 ? (
-        <div className="text-center py-10">
-          <Users2 className="mx-auto text-saffron-400 mb-2" size={28} />
-          <p className="text-maroon-500 text-sm">No general sponsors recorded yet.</p>
-        </div>
       ) : (
-        <div className="overflow-x-auto">
+        <ResponsiveTable
+          data={sponsors}
+          emptyMessage="No general sponsors recorded yet."
+          renderCard={(s) => (
+            <TableCard>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-semibold text-maroon-800 truncate">{s.sponsorName}</p>
+                  <span className="badge bg-saffron-100 text-saffron-700 mt-1">{s.categoryName}</span>
+                </div>
+                {s.contributionAmount ? (
+                  <p className="text-base font-bold text-saffron-600 shrink-0">{formatINR(s.contributionAmount)}</p>
+                ) : null}
+              </div>
+              {(s.contactInfo || s.contributionDetails) && (
+                <div className="mt-2.5 text-xs text-maroon-500 space-y-1">
+                  {s.contactInfo && <p>{s.contactInfo}</p>}
+                  {s.contributionDetails && <p className="text-maroon-400">{s.contributionDetails}</p>}
+                </div>
+              )}
+              <CardActions>
+                <CardActionButton onClick={() => openEdit(s)} icon={Pencil} label="Edit" />
+                <CardActionButton onClick={() => handleDelete(s)} icon={Trash2} label="Delete" tone="danger" />
+              </CardActions>
+            </TableCard>
+          )}
+        >
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-maroon-500 border-b border-saffron-100">
@@ -137,7 +159,7 @@ export default function GeneralSponsorsTab() {
               ))}
             </tbody>
           </table>
-        </div>
+        </ResponsiveTable>
       )}
 
       <Modal open={formOpen} onClose={() => setFormOpen(false)} title={editing ? 'Edit Sponsor' : 'Add General Sponsor'}>
