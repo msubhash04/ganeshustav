@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, HandCoins, Receipt, FileBarChart, Users, LogOut, Sparkles, CalendarDays, Gavel, Landmark, Gift, KeyRound, Eye, ShieldAlert, DoorOpen } from 'lucide-react'
+import { LayoutDashboard, HandCoins, Receipt, FileBarChart, Users, LogOut, Sparkles, CalendarDays, Gavel, Landmark, Gift, KeyRound, Eye, ShieldAlert, DoorOpen, Menu, X } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import ChangePasswordModal from '../common/ChangePasswordModal'
 
@@ -24,6 +24,7 @@ export default function Layout({ children, festivalName = 'Ganesh Utsav' }) {
   const navigate = useNavigate()
   const [changePasswordOpen, setChangePasswordOpen] = useState(false)
   const [exiting, setExiting] = useState(false)
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
 
   const handleLogout = () => {
     logout()
@@ -52,15 +53,17 @@ export default function Layout({ children, festivalName = 'Ganesh Utsav' }) {
         <div className={`fixed top-0 left-0 right-0 z-40 flex flex-col sm:flex-row items-center justify-between gap-2 px-4 py-2 text-sm font-medium ${
           user.inspectionMode === 'ADMIN_OVERRIDE' ? 'bg-amber-600 text-white' : 'bg-maroon-900 text-white'
         }`}>
-          <span className="flex items-center gap-2">
-            {user.inspectionMode === 'ADMIN_OVERRIDE' ? <ShieldAlert size={16} /> : <Eye size={16} />}
-            Currently inspecting: <strong>{user.committeeName}</strong> (Code: {user.tenantCode}) ·{' '}
-            {user.inspectionMode === 'ADMIN_OVERRIDE' ? 'Admin Override Mode' : 'Read-Only Mode'}
+          <span className="flex items-center gap-2 text-center sm:text-left">
+            {user.inspectionMode === 'ADMIN_OVERRIDE' ? <ShieldAlert size={16} className="shrink-0" /> : <Eye size={16} className="shrink-0" />}
+            <span>
+              Inspecting: <strong>{user.committeeName}</strong> ({user.tenantCode}) ·{' '}
+              {user.inspectionMode === 'ADMIN_OVERRIDE' ? 'Admin Override' : 'Read-Only'}
+            </span>
           </span>
           <button
             onClick={handleExitInspection}
             disabled={exiting}
-            className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white/15 hover:bg-white/25 transition disabled:opacity-60"
+            className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white/15 hover:bg-white/25 transition disabled:opacity-60 shrink-0"
           >
             <DoorOpen size={14} /> {exiting ? 'Exiting…' : 'Exit Inspection'}
           </button>
@@ -117,7 +120,7 @@ export default function Layout({ children, festivalName = 'Ganesh Utsav' }) {
       <ChangePasswordModal open={changePasswordOpen} onClose={() => setChangePasswordOpen(false)} />
 
       <div className={`flex-1 flex flex-col min-w-0 ${user?.isInspecting ? 'mt-9' : ''}`}>
-        {/* Top header */}
+        {/* Top header - hamburger menu on mobile, welcome message on desktop */}
         <header className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-saffron-100 px-4 md:px-8 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2 md:hidden">
             <div className="w-8 h-8 rounded-full bg-saffron-400 flex items-center justify-center text-base">🐘</div>
@@ -132,38 +135,59 @@ export default function Layout({ children, festivalName = 'Ganesh Utsav' }) {
             </span>
           </div>
           <button
-            onClick={handleLogout}
-            className="md:hidden text-maroon-500"
-            aria-label="Logout"
+            onClick={() => setMobileNavOpen((v) => !v)}
+            className="md:hidden text-maroon-600"
+            aria-label={mobileNavOpen ? 'Close menu' : 'Open menu'}
           >
-            <LogOut size={20} />
+            {mobileNavOpen ? <X size={22} /> : <Menu size={22} />}
           </button>
         </header>
 
-        {/* Page content */}
-        <main className="flex-1 px-4 md:px-8 py-6 pb-24 md:pb-8">{children}</main>
-      </div>
+        {/* Mobile nav drawer - every screen the desktop sidebar has,
+            reachable on mobile too (a curated bottom tab bar used to hide
+            Festival Setup, Sponsorships, Loans, and Committee entirely) */}
+        {mobileNavOpen && (
+          <nav className="md:hidden bg-maroon-800 text-white px-3 py-3 space-y-1 shadow-lg">
+            {visibleNavItems.map(({ to, label, icon: Icon, end }) => (
+              <NavLink
+                key={to}
+                to={to}
+                end={end}
+                onClick={() => setMobileNavOpen(false)}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 px-3 py-2.5 rounded-xl transition font-medium ${
+                    isActive ? 'bg-saffron-500 text-white' : 'text-saffron-100 hover:bg-white/10'
+                  }`
+                }
+              >
+                <Icon size={18} />
+                {label}
+              </NavLink>
+            ))}
+            <div className="border-t border-white/10 my-2" />
+            <div className="px-3 pb-1 text-xs text-saffron-300">
+              {user?.name} · {user?.isInspecting ? `${user.role} (inspecting)` : user?.role}
+            </div>
+            {!user?.isInspecting && (
+              <button
+                onClick={() => { setChangePasswordOpen(true); setMobileNavOpen(false) }}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl w-full text-saffron-100 hover:bg-white/10 transition"
+              >
+                <KeyRound size={18} /> Change Password
+              </button>
+            )}
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl w-full text-saffron-100 hover:bg-white/10 transition"
+            >
+              <LogOut size={18} /> Logout
+            </button>
+          </nav>
+        )}
 
-      {/* Mobile bottom nav - curated subset to avoid crowding on small screens */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-saffron-100 flex justify-around py-2 shadow-[0_-2px_10px_rgba(0,0,0,0.06)]">
-        {visibleNavItems
-          .filter((item) => ['/', '/collections', '/expenses', '/auction', '/reports'].includes(item.to))
-          .map(({ to, label, icon: Icon, end }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={end}
-            className={({ isActive }) =>
-              `flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-xs font-medium ${
-                isActive ? 'text-saffron-600' : 'text-maroon-400'
-              }`
-            }
-          >
-            <Icon size={20} />
-            {label}
-          </NavLink>
-        ))}
-      </nav>
+        {/* Page content */}
+        <main className="flex-1 px-4 md:px-8 py-6">{children}</main>
+      </div>
     </div>
   )
 }

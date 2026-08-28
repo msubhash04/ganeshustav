@@ -144,7 +144,7 @@ export default function Auction() {
             <input className="input-field" value={form.itemName} onChange={(e) => setForm({ ...form, itemName: e.target.value })}
                    placeholder="e.g. Modak Laddu" required />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="label-text">Winner's Name *</label>
               <input className="input-field" value={form.winnerName} onChange={(e) => setForm({ ...form, winnerName: e.target.value })} required />
@@ -159,7 +159,7 @@ export default function Auction() {
             <input type="number" min="1" max={festivalYear?.durationDays} className="input-field" value={form.dayNumber}
                    onChange={(e) => setForm({ ...form, dayNumber: e.target.value })} placeholder="e.g. 3" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="label-text">Payment Status *</label>
               <select className="input-field" value={form.paymentStatus} onChange={(e) => setForm({ ...form, paymentStatus: e.target.value })}>

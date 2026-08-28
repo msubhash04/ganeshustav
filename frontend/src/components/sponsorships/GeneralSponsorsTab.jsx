@@ -155,7 +155,7 @@ export default function GeneralSponsorsTab() {
               ))}
             </select>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="label-text">Contact Info</label>
               <input className="input-field" value={form.contactInfo} onChange={(e) => setForm({ ...form, contactInfo: e.target.value })} placeholder="Phone or email" />

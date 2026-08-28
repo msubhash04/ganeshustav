@@ -194,7 +194,7 @@ export default function Loans() {
             <label className="label-text">Borrower Phone (optional)</label>
             <input className="input-field" value={loanForm.borrowerPhone} onChange={(e) => setLoanForm({ ...loanForm, borrowerPhone: e.target.value })} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="label-text">Principal Amount (₹) *</label>
               <input type="number" min="1" className="input-field" value={loanForm.principalAmount}

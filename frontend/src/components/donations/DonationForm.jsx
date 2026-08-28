@@ -55,7 +55,7 @@ export default function DonationForm({ initialData, onSubmit, onCancel, submitti
         {errors.donorName && <p className="text-xs text-maroon-600 mt-1">{errors.donorName}</p>}
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="label-text">Phone Number *</label>
           <input className="input-field" value={form.phoneNumber} onChange={handleChange('phoneNumber')} placeholder="9876543210" maxLength={10} />
@@ -73,7 +73,7 @@ export default function DonationForm({ initialData, onSubmit, onCancel, submitti
         <input className="input-field" value={form.address} onChange={handleChange('address')} placeholder="Street, area, city" />
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="label-text">Payment Mode *</label>
           <select className="input-field" value={form.paymentMode} onChange={handleChange('paymentMode')}>

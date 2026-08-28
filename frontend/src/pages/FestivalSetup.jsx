@@ -134,7 +134,7 @@ export default function FestivalSetup() {
             <input className="input-field" value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })}
                    placeholder="e.g. 2026 Ganesh Utsav" required />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="label-text">Year *</label>
               <input type="number" className="input-field" value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })}
@@ -146,7 +146,7 @@ export default function FestivalSetup() {
                      onChange={(e) => setForm({ ...form, durationDays: e.target.value })} required />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="label-text">Start Date *</label>
               <input type="date" className="input-field" value={form.startDate}

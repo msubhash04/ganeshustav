@@ -149,7 +149,7 @@ export default function AnnadanamSponsorsTab() {
             <label className="label-text">Sponsor Name *</label>
             <input className="input-field" value={form.sponsorName} onChange={(e) => setForm({ ...form, sponsorName: e.target.value })} required />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="label-text">Festival Day *</label>
               <input type="number" min="1" max={festivalYear?.durationDays} className="input-field" value={form.dayNumber}
@@ -161,7 +161,7 @@ export default function AnnadanamSponsorsTab() {
                      placeholder="e.g. Lunch, Dinner, All Day" />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="label-text">Contact Info</label>
               <input className="input-field" value={form.contactInfo} onChange={(e) => setForm({ ...form, contactInfo: e.target.value })} placeholder="Phone or email" />

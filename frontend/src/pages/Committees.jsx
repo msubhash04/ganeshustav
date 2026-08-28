@@ -164,7 +164,7 @@ export default function Committees() {
             <input className="input-field" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
                    placeholder="e.g. Shivaji Nagar Ganesh Mandal" required />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="label-text">City *</label>
               <input className="input-field" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} required />
@@ -180,7 +180,7 @@ export default function Committees() {
           </div>
           <hr className="border-saffron-100" />
           <p className="text-sm font-semibold text-maroon-700">Initial President Account</p>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="label-text">President Name *</label>
               <input className="input-field" value={form.presidentName} onChange={(e) => setForm({ ...form, presidentName: e.target.value })} required />
@@ -190,7 +190,7 @@ export default function Committees() {
               <input className="input-field" value={form.presidentPhone} onChange={(e) => setForm({ ...form, presidentPhone: e.target.value })} required />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="label-text">Login Username *</label>
               <input className="input-field" value={form.presidentUsername} onChange={(e) => setForm({ ...form, presidentUsername: e.target.value })} required />

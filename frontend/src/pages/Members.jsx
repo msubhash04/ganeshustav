@@ -118,7 +118,7 @@ export default function Members() {
             <label className="label-text">Full Name *</label>
             <input className="input-field" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="label-text">Phone *</label>
               <input className="input-field" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} required />
@@ -134,7 +134,7 @@ export default function Members() {
             <label className="label-text">Email (optional)</label>
             <input type="email" className="input-field" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="label-text">Login Username *</label>
               <input className="input-field" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} required />

@@ -63,7 +63,7 @@ export default function ExpenseForm({ initialData, onSubmit, onCancel, submittin
         {errors.description && <p className="text-xs text-maroon-600 mt-1">{errors.description}</p>}
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="label-text">Category *</label>
           <select className="input-field" value={form.category} onChange={handleChange('category')}>
@@ -85,7 +85,7 @@ export default function ExpenseForm({ initialData, onSubmit, onCancel, submittin
         {errors.paidTo && <p className="text-xs text-maroon-600 mt-1">{errors.paidTo}</p>}
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="label-text">Payment Mode *</label>
           <select className="input-field" value={form.paymentMode} onChange={handleChange('paymentMode')}>
