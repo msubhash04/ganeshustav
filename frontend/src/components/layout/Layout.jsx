@@ -23,9 +23,10 @@ const NAV_ITEMS = [
   // work regardless of whether a new year has been set up yet.
   { to: '/archives', label: 'Festival Archives', icon: Archive },
   // Staff management stays off-limits during Tenant Inspection, in both
-  // modes (see InspectionModeFilter) - hidden here too so a Developer
-  // inspecting never lands on a page that will only 403.
-  { to: '/members', label: 'Committee', icon: Users, inspectionExcluded: true },
+  // modes (see InspectionModeFilter) - but VIEWING the roster is allowed,
+  // so the nav item stays visible; Members.jsx itself hides the
+  // add/deactivate/remove actions when inspecting.
+  { to: '/members', label: 'Committee', icon: Users },
 ]
 
 export default function Layout({ children, festivalName = 'Ganesh Utsav' }) {

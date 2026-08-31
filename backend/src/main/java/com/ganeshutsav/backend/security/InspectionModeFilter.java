@@ -33,13 +33,17 @@ public class InspectionModeFilter extends OncePerRequestFilter {
     private final TenantContext tenantContext;
     private final InspectionAuditLogRepository auditLogRepository;
 
-    // Excluded from inspection entirely, in BOTH modes - even
-    // ADMIN_OVERRIDE, which otherwise grants ROLE_PRESIDENT. Staff
-    // account management and committee-level settings (lock/unlock,
-    // regenerate code) stay Developer-free while inspecting, so a
-    // Developer looking at one committee's books can never add/remove
-    // that committee's staff or relock/unlock it from inside inspection.
-    private static final String[] EXCLUDED_PREFIXES = { "/api/members", "/api/committees" };
+    // Fully excluded from inspection, EVERY method (including reads), in
+    // BOTH modes - committee-level settings (lock/unlock, regenerate
+    // code) stay entirely off the table while inspecting.
+    private static final String[] FULLY_EXCLUDED_PREFIXES = { "/api/committees" };
+
+    // Excluded from MUTATION only, in BOTH modes - even ADMIN_OVERRIDE,
+    // which otherwise grants ROLE_PRESIDENT. A Developer inspecting a
+    // committee can observe its staff roster (read), which is why this
+    // isn't in FULLY_EXCLUDED_PREFIXES above, but can never add, remove,
+    // or deactivate a staff member on that committee's behalf.
+    private static final String[] WRITE_EXCLUDED_PREFIXES = { "/api/members" };
     private static final Set<String> SAFE_METHODS = Set.of("GET", "HEAD", "OPTIONS");
 
     @Override
@@ -55,15 +59,23 @@ public class InspectionModeFilter extends OncePerRequestFilter {
         }
 
         String path = request.getRequestURI();
-        for (String prefix : EXCLUDED_PREFIXES) {
+        boolean isMutating = !SAFE_METHODS.contains(request.getMethod().toUpperCase());
+
+        for (String prefix : FULLY_EXCLUDED_PREFIXES) {
             if (path.startsWith(prefix)) {
-                writeForbidden(response, "Staff and committee management stay off-limits during tenant inspection, " +
+                writeForbidden(response, "Committee-level settings stay off-limits during tenant inspection, " +
                         "regardless of mode. Exit inspection to manage this from the Developer Dashboard.");
                 return;
             }
         }
-
-        boolean isMutating = !SAFE_METHODS.contains(request.getMethod().toUpperCase());
+        for (String prefix : WRITE_EXCLUDED_PREFIXES) {
+            if (path.startsWith(prefix) && isMutating) {
+                writeForbidden(response, "Staff management stays off-limits during tenant inspection, " +
+                        "regardless of mode. You can still view the committee's staff roster. " +
+                        "Exit inspection to add, remove, or deactivate a member.");
+                return;
+            }
+        }
 
         if (inspection.getMode() == InspectionMode.READ_ONLY && isMutating) {
             writeForbidden(response, "Read-only inspection mode - switch to Admin Override Mode to make changes.");

@@ -4,6 +4,7 @@ import Layout from '../components/layout/Layout'
 import Modal from '../components/common/Modal'
 import ResponsiveTable, { TableCard, CardActions, CardActionButton } from '../components/common/ResponsiveTable'
 import { memberApi } from '../api/reportApi'
+import { useAuth } from '../context/AuthContext'
 
 const ROLES = ['PRESIDENT', 'TREASURER', 'SECRETARY', 'VOLUNTEER']
 const ROLE_STYLES = {
@@ -16,6 +17,12 @@ const ROLE_STYLES = {
 const emptyForm = { name: '', phone: '', email: '', username: '', password: '', role: 'VOLUNTEER' }
 
 export default function Members() {
+  const { user } = useAuth()
+  // Staff management stays off-limits during Tenant Inspection, in both
+  // modes (see InspectionModeFilter) - a Developer inspecting can
+  // observe the roster but not add/deactivate/remove anyone on it.
+  const isInspecting = !!user?.isInspecting
+
   const [members, setMembers] = useState([])
   const [loading, setLoading] = useState(true)
   const [formOpen, setFormOpen] = useState(false)
@@ -38,7 +45,7 @@ export default function Members() {
       setForm(emptyForm)
       load()
     } catch (err) {
-      alert(err?.response?.data ? JSON.stringify(err.response.data) : 'Failed to add member')
+      alert(err?.response?.data?.error || err?.response?.data || 'Failed to add member')
     } finally {
       setSubmitting(false)
     }
@@ -60,10 +67,18 @@ export default function Members() {
     <Layout>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <h1 className="page-title">Committee Members</h1>
-        <button onClick={() => setFormOpen(true)} className="btn-primary inline-flex items-center gap-2 w-fit">
-          <Plus size={18} /> Add Member
-        </button>
+        {!isInspecting && (
+          <button onClick={() => setFormOpen(true)} className="btn-primary inline-flex items-center gap-2 w-fit">
+            <Plus size={18} /> Add Member
+          </button>
+        )}
       </div>
+
+      {isInspecting && (
+        <div className="card bg-saffron-50 border-saffron-200 text-maroon-600 mb-6 text-sm">
+          You're viewing this committee's staff roster during Tenant Inspection. Staff management stays off-limits from here, in both Read-Only and Admin Override mode.
+        </div>
+      )}
 
       <div className="card">
         {loading ? (
@@ -86,10 +101,12 @@ export default function Members() {
                     {m.active ? 'Active' : 'Inactive'}
                   </span>
                 </div>
-                <CardActions>
-                  <CardActionButton onClick={() => handleDeactivate(m)} icon={UserX} label="Deactivate" />
-                  <CardActionButton onClick={() => handleDelete(m)} icon={Trash2} label="Remove" tone="danger" />
-                </CardActions>
+                {!isInspecting && (
+                  <CardActions>
+                    <CardActionButton onClick={() => handleDeactivate(m)} icon={UserX} label="Deactivate" />
+                    <CardActionButton onClick={() => handleDelete(m)} icon={Trash2} label="Remove" tone="danger" />
+                  </CardActions>
+                )}
               </TableCard>
             )}
           >
@@ -101,7 +118,7 @@ export default function Members() {
                   <th className="py-2 pr-4">Phone</th>
                   <th className="py-2 pr-4">Username</th>
                   <th className="py-2 pr-4">Status</th>
-                  <th className="py-2 pr-4 text-right">Actions</th>
+                  {!isInspecting && <th className="py-2 pr-4 text-right">Actions</th>}
                 </tr>
               </thead>
               <tbody>
@@ -116,16 +133,18 @@ export default function Members() {
                         {m.active ? 'Active' : 'Inactive'}
                       </span>
                     </td>
-                    <td className="py-2.5 pr-4">
-                      <div className="flex justify-end gap-2">
-                        <button onClick={() => handleDeactivate(m)} className="text-maroon-400 hover:text-saffron-600" title="Deactivate">
-                          <UserX size={16} />
-                        </button>
-                        <button onClick={() => handleDelete(m)} className="text-maroon-400 hover:text-maroon-700" title="Remove">
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
+                    {!isInspecting && (
+                      <td className="py-2.5 pr-4">
+                        <div className="flex justify-end gap-2">
+                          <button onClick={() => handleDeactivate(m)} className="text-maroon-400 hover:text-saffron-600" title="Deactivate">
+                            <UserX size={16} />
+                          </button>
+                          <button onClick={() => handleDelete(m)} className="text-maroon-400 hover:text-maroon-700" title="Remove">
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
