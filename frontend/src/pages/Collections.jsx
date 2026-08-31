@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { Plus, Search, Printer } from 'lucide-react'
 import Layout from '../components/layout/Layout'
 import Modal from '../components/common/Modal'
+import FestivalYearGate from '../components/common/FestivalYearGate'
 import DonationForm from '../components/donations/DonationForm'
 import DonationTable from '../components/donations/DonationTable'
 import Receipt from '../components/donations/Receipt'
@@ -79,68 +80,72 @@ export default function Collections() {
 
   return (
     <Layout>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
-        <h1 className="page-title">Collections / Donations</h1>
-        <button onClick={handleAdd} className="btn-primary inline-flex items-center gap-2 w-fit">
-          <Plus size={18} /> Add Donation
-        </button>
-      </div>
+      <h1 className="page-title mb-6">Collections / Donations</h1>
 
-      {/* Total collected */}
-      <div className="card mb-6 bg-gradient-to-r from-saffron-500 to-maroon-600 text-white">
-        <p className="text-sm opacity-90">Total Collected</p>
-        <p className="text-3xl font-bold">{formatINR(total)}</p>
-      </div>
-
-      {/* Filters */}
-      <form onSubmit={handleFilterSubmit} className="card mb-6 grid grid-cols-1 sm:grid-cols-5 gap-3 items-end">
-        <div>
-          <label className="label-text">Search by Name</label>
-          <input className="input-field" placeholder="Donor name" value={filters.name}
-                 onChange={(e) => setFilters({ ...filters, name: e.target.value })} />
+      <FestivalYearGate>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+          <p className="text-sm text-maroon-500">Every donation received this festival, in one place.</p>
+          <button onClick={handleAdd} className="btn-primary inline-flex items-center gap-2 w-fit">
+            <Plus size={18} /> Add Donation
+          </button>
         </div>
-        <div>
-          <label className="label-text">From Date</label>
-          <input type="date" className="input-field" value={filters.startDate}
-                 onChange={(e) => setFilters({ ...filters, startDate: e.target.value })} />
+
+        {/* Total collected */}
+        <div className="card mb-6 bg-gradient-to-r from-saffron-500 to-maroon-600 text-white">
+          <p className="text-sm opacity-90">Total Collected</p>
+          <p className="text-3xl font-bold">{formatINR(total)}</p>
         </div>
-        <div>
-          <label className="label-text">To Date</label>
-          <input type="date" className="input-field" value={filters.endDate}
-                 onChange={(e) => setFilters({ ...filters, endDate: e.target.value })} />
+
+        {/* Filters */}
+        <form onSubmit={handleFilterSubmit} className="card mb-6 grid grid-cols-1 sm:grid-cols-5 gap-3 items-end">
+          <div>
+            <label className="label-text">Search by Name</label>
+            <input className="input-field" placeholder="Donor name" value={filters.name}
+                   onChange={(e) => setFilters({ ...filters, name: e.target.value })} />
+          </div>
+          <div>
+            <label className="label-text">From Date</label>
+            <input type="date" className="input-field" value={filters.startDate}
+                   onChange={(e) => setFilters({ ...filters, startDate: e.target.value })} />
+          </div>
+          <div>
+            <label className="label-text">To Date</label>
+            <input type="date" className="input-field" value={filters.endDate}
+                   onChange={(e) => setFilters({ ...filters, endDate: e.target.value })} />
+          </div>
+          <div>
+            <label className="label-text">Min Amount</label>
+            <input type="number" className="input-field" placeholder="0" value={filters.minAmount}
+                   onChange={(e) => setFilters({ ...filters, minAmount: e.target.value })} />
+          </div>
+          <button type="submit" className="btn-secondary inline-flex items-center justify-center gap-2">
+            <Search size={16} /> Filter
+          </button>
+        </form>
+
+        {error && <div className="card bg-maroon-50 border-maroon-200 text-maroon-700 mb-6">{error}</div>}
+
+        <div className="card">
+          {loading ? (
+            <p className="text-maroon-400">Loading…</p>
+          ) : (
+            <DonationTable donations={donations} onEdit={handleEdit} onDelete={handleDelete} onPrint={handlePrint} />
+          )}
         </div>
-        <div>
-          <label className="label-text">Min Amount</label>
-          <input type="number" className="input-field" placeholder="0" value={filters.minAmount}
-                 onChange={(e) => setFilters({ ...filters, minAmount: e.target.value })} />
-        </div>
-        <button type="submit" className="btn-secondary inline-flex items-center justify-center gap-2">
-          <Search size={16} /> Filter
-        </button>
-      </form>
 
-      {error && <div className="card bg-maroon-50 border-maroon-200 text-maroon-700 mb-6">{error}</div>}
+        {/* Add/Edit modal */}
+        <Modal open={formOpen} onClose={() => setFormOpen(false)} title={editing ? 'Edit Donation' : 'Add New Donation'}>
+          <DonationForm initialData={editing} onSubmit={handleSubmit} onCancel={() => setFormOpen(false)} submitting={submitting} />
+        </Modal>
 
-      <div className="card">
-        {loading ? (
-          <p className="text-maroon-400">Loading…</p>
-        ) : (
-          <DonationTable donations={donations} onEdit={handleEdit} onDelete={handleDelete} onPrint={handlePrint} />
-        )}
-      </div>
-
-      {/* Add/Edit modal */}
-      <Modal open={formOpen} onClose={() => setFormOpen(false)} title={editing ? 'Edit Donation' : 'Add New Donation'}>
-        <DonationForm initialData={editing} onSubmit={handleSubmit} onCancel={() => setFormOpen(false)} submitting={submitting} />
-      </Modal>
-
-      {/* Receipt modal */}
-      <Modal open={!!receiptDonation} onClose={() => setReceiptDonation(null)} title="Donation Receipt">
-        <Receipt donation={receiptDonation} />
-        <button onClick={() => window.print()} className="btn-primary w-full mt-4 inline-flex items-center justify-center gap-2">
-          <Printer size={16} /> Print Receipt
-        </button>
-      </Modal>
+        {/* Receipt modal */}
+        <Modal open={!!receiptDonation} onClose={() => setReceiptDonation(null)} title="Donation Receipt">
+          <Receipt donation={receiptDonation} />
+          <button onClick={() => window.print()} className="btn-primary w-full mt-4 inline-flex items-center justify-center gap-2">
+            <Printer size={16} /> Print Receipt
+          </button>
+        </Modal>
+      </FestivalYearGate>
     </Layout>
   )
 }

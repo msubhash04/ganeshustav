@@ -15,8 +15,17 @@ public interface DonationRepository extends JpaRepository<Donation, Long> {
 
     List<Donation> findTop10ByCommitteeIdOrderByCreatedAtDesc(Long committeeId);
 
+    List<Donation> findByFestivalYearIdOrderByDonationDateDesc(Long festivalYearId);
+
+    List<Donation> findTop10ByFestivalYearIdOrderByCreatedAtDesc(Long festivalYearId);
+
     @Query("SELECT COALESCE(SUM(d.amount), 0) FROM Donation d WHERE d.committee.id = :committeeId")
     BigDecimal getTotalCollection(@Param("committeeId") Long committeeId);
+
+    // scoped to a single festival year - used by the Dashboard (active
+    // year only) and the Festival Archives audit report (any owned year)
+    @Query("SELECT COALESCE(SUM(d.amount), 0) FROM Donation d WHERE d.festivalYear.id = :festivalYearId")
+    BigDecimal getTotalCollectionByFestivalYear(@Param("festivalYearId") Long festivalYearId);
 
     // MULTI-TENANT SAFETY: committeeId is always required and comes from the
     // authenticated caller's own committee (via TenantContext) - never from

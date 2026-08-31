@@ -16,6 +16,12 @@ export const reportApi = {
       params: { startDate, endDate },
       responseType: 'blob',
     }),
+
+  // Festival Archives - full read-only audit report for one festival
+  // year (active or archived): financial summary, category breakdown,
+  // and the complete ledger. Available to every committee role.
+  getFestivalAudit: (festivalYearId) =>
+    axiosClient.get(`/reports/festival-audit/${festivalYearId}`).then((res) => res.data),
 }
 
 export const publicApi = {

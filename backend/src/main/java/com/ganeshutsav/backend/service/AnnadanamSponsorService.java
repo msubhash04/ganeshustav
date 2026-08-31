@@ -22,6 +22,7 @@ public class AnnadanamSponsorService {
 
     private final AnnadanamSponsorRepository annadanamSponsorRepository;
     private final FestivalYearRepository festivalYearRepository;
+    private final FestivalYearGuard festivalYearGuard;
     private final TenantContext tenantContext;
 
     public List<AnnadanamSponsorDTO> getByFestivalYear(Long festivalYearId) {
@@ -33,7 +34,9 @@ public class AnnadanamSponsorService {
     @Transactional
     public AnnadanamSponsorDTO create(AnnadanamSponsorDTO dto) {
         Committee committee = tenantContext.requireCommittee();
-        FestivalYear year = resolveFestivalYear(dto.getFestivalYearId());
+        // RULE: a new Annadanam sponsorship can only ever be filed
+        // against the currently active festival year.
+        FestivalYear year = festivalYearGuard.resolveForNewRecord(dto.getFestivalYearId());
 
         AnnadanamSponsor sponsor = AnnadanamSponsor.builder()
                 .committee(committee)
@@ -52,6 +55,9 @@ public class AnnadanamSponsorService {
     @Transactional
     public AnnadanamSponsorDTO update(Long id, AnnadanamSponsorDTO dto) {
         AnnadanamSponsor existing = findOwnedEntity(id);
+        // RULE: a record filed under a since-archived festival year can
+        // no longer be modified.
+        festivalYearGuard.assertActive(existing.getFestivalYear());
         existing.setSponsorName(dto.getSponsorName());
         existing.setContactInfo(dto.getContactInfo());
         existing.setDayNumber(dto.getDayNumber());
@@ -63,7 +69,8 @@ public class AnnadanamSponsorService {
 
     @Transactional
     public void delete(Long id) {
-        findOwnedEntity(id); // verifies ownership before deleting
+        AnnadanamSponsor existing = findOwnedEntity(id); // verifies ownership before deleting
+        festivalYearGuard.assertActive(existing.getFestivalYear());
         annadanamSponsorRepository.deleteById(id);
     }
 
@@ -73,13 +80,6 @@ public class AnnadanamSponsorService {
                 .orElseThrow(() -> new EntityNotFoundException("Festival year not found: " + festivalYearId));
         tenantContext.assertOwnedByCurrentTenant(year.getCommittee());
         return year;
-    }
-
-    private FestivalYear resolveFestivalYear(Long festivalYearId) {
-        if (festivalYearId != null) {
-            return findOwnedFestivalYear(festivalYearId);
-        }
-        return festivalYearRepository.findFirstByCommitteeIdAndActiveTrueOrderByIdDesc(tenantContext.requireCommitteeId()).orElse(null);
     }
 
     private AnnadanamSponsor findOwnedEntity(Long id) {

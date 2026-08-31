@@ -33,6 +33,7 @@ public class ExpenseService {
 
     private final ExpenseRepository expenseRepository;
     private final FestivalYearRepository festivalYearRepository;
+    private final FestivalYearGuard festivalYearGuard;
     private final TenantContext tenantContext;
     private static final String UPLOAD_DIR = "uploads/bills";
 
@@ -57,7 +58,9 @@ public class ExpenseService {
         validateNoteForMiscellaneous(dto);
         Committee committee = tenantContext.requireCommittee();
         String filePath = storeFileIfPresent(billFile);
-        FestivalYear year = resolveFestivalYear(dto.getFestivalYearId(), committee.getId());
+        // RULE: a new expense can only ever be filed against the
+        // currently active festival year.
+        FestivalYear year = festivalYearGuard.resolveForNewRecord(dto.getFestivalYearId());
 
         Expense expense = Expense.builder()
                 .committee(committee)
@@ -86,19 +89,13 @@ public class ExpenseService {
         }
     }
 
-    private FestivalYear resolveFestivalYear(Long festivalYearId, Long committeeId) {
-        if (festivalYearId != null) {
-            return festivalYearRepository.findById(festivalYearId)
-                    .filter(y -> y.getCommittee().getId().equals(committeeId))
-                    .orElse(null);
-        }
-        return festivalYearRepository.findFirstByCommitteeIdAndActiveTrueOrderByIdDesc(committeeId).orElse(null);
-    }
-
     @Transactional
     public ExpenseDTO update(Long id, ExpenseDTO dto, MultipartFile billFile) {
         validateNoteForMiscellaneous(dto);
         Expense existing = findOwnedEntity(id);
+        // RULE: a record filed under a since-archived festival year can
+        // no longer be modified.
+        festivalYearGuard.assertActive(existing.getFestivalYear());
         existing.setDescription(dto.getDescription());
         existing.setCategory(dto.getCategory());
         existing.setAmount(dto.getAmount());
@@ -115,7 +112,8 @@ public class ExpenseService {
 
     @Transactional
     public void delete(Long id) {
-        findOwnedEntity(id); // verifies ownership before deleting
+        Expense existing = findOwnedEntity(id); // verifies ownership before deleting
+        festivalYearGuard.assertActive(existing.getFestivalYear());
         expenseRepository.deleteById(id);
     }
 

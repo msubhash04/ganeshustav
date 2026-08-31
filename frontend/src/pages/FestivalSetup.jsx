@@ -6,9 +6,11 @@ import { festivalYearApi } from '../api/festivalYearApi'
 import { formatINR, formatDate } from '../utils/format'
 import { useAuth } from '../context/AuthContext'
 
+const currentYear = new Date().getFullYear()
+
 const emptyForm = {
   label: '',
-  year: new Date().getFullYear(),
+  year: currentYear,
   startDate: new Date().toISOString().slice(0, 10),
   durationDays: 5,
   carryForwardBalance: 0,
@@ -24,6 +26,12 @@ export default function FestivalSetup() {
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState(emptyForm)
   const [submitting, setSubmitting] = useState(false)
+
+  // RULE (One-Year Limit): only one festival can ever exist for the
+  // current calendar year, per committee - once it's created, there is
+  // nothing left to create until next Jan 1, so the button that would
+  // just fail on submit is replaced with an explanation instead.
+  const currentYearFestivalExists = years.some((y) => y.year === currentYear)
 
   const load = () => {
     setLoading(true)
@@ -58,7 +66,7 @@ export default function FestivalSetup() {
       setFormOpen(false)
       load()
     } catch (err) {
-      alert(err?.response?.data ? JSON.stringify(err.response.data) : 'Failed to save. Only the President can manage festival setup.')
+      alert(err?.response?.data?.error || err?.response?.data || 'Failed to save. Only the President can manage festival setup.')
     } finally {
       setSubmitting(false)
     }
@@ -73,7 +81,7 @@ export default function FestivalSetup() {
     <Layout>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <h1 className="page-title">Festival Setup</h1>
-        {isPresident && (
+        {isPresident && !currentYearFestivalExists && (
           <button onClick={openAdd} className="btn-primary inline-flex items-center gap-2 w-fit">
             <Plus size={18} /> New Festival Year
           </button>
@@ -83,6 +91,12 @@ export default function FestivalSetup() {
       {!isPresident && (
         <div className="card bg-saffron-50 border-saffron-200 text-maroon-600 mb-6 text-sm">
           Only the President can create or edit festival years. You can view the list below.
+        </div>
+      )}
+
+      {isPresident && currentYearFestivalExists && (
+        <div className="card bg-green-50 border-green-200 text-green-700 mb-6 text-sm">
+          A festival for {currentYear} has already been created — only one per calendar year is allowed. The next one unlocks automatically on 1 Jan {currentYear + 1}.
         </div>
       )}
 
@@ -137,8 +151,7 @@ export default function FestivalSetup() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="label-text">Year *</label>
-              <input type="number" className="input-field" value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })}
-                     disabled={!!editing} required />
+              <input type="number" className="input-field bg-saffron-50 cursor-not-allowed" value={form.year} disabled readOnly required />
             </div>
             <div>
               <label className="label-text">Duration (days) *</label>
@@ -162,6 +175,11 @@ export default function FestivalSetup() {
           <p className="text-xs text-maroon-400">
             Enter ₹0 if there's no leftover balance from the previous year's celebration.
           </p>
+          {!editing && (
+            <p className="text-xs text-maroon-400">
+              A festival can only be created for the current calendar year ({currentYear}) — that's fixed automatically above.
+            </p>
+          )}
           <div className="flex gap-3 pt-2">
             <button type="submit" className="btn-primary flex-1" disabled={submitting}>
               {submitting ? 'Saving…' : editing ? 'Update Festival Year' : 'Create Festival Year'}

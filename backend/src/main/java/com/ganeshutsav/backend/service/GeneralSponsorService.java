@@ -25,6 +25,7 @@ public class GeneralSponsorService {
     private final GeneralSponsorRepository generalSponsorRepository;
     private final SponsorshipCategoryRepository categoryRepository;
     private final FestivalYearRepository festivalYearRepository;
+    private final FestivalYearGuard festivalYearGuard;
     private final TenantContext tenantContext;
 
     public List<GeneralSponsorDTO> getAll() {
@@ -43,7 +44,9 @@ public class GeneralSponsorService {
     public GeneralSponsorDTO create(GeneralSponsorDTO dto) {
         Committee committee = tenantContext.requireCommittee();
         SponsorshipCategory category = findOwnedCategory(dto.getCategoryId());
-        FestivalYear year = resolveFestivalYear(dto.getFestivalYearId());
+        // RULE: a new sponsorship can only ever be filed against the
+        // currently active festival year.
+        FestivalYear year = festivalYearGuard.resolveForNewRecord(dto.getFestivalYearId());
 
         GeneralSponsor sponsor = GeneralSponsor.builder()
                 .committee(committee)
@@ -61,6 +64,9 @@ public class GeneralSponsorService {
     @Transactional
     public GeneralSponsorDTO update(Long id, GeneralSponsorDTO dto) {
         GeneralSponsor existing = findOwnedEntity(id);
+        // RULE: a record filed under a since-archived festival year can
+        // no longer be modified.
+        festivalYearGuard.assertActive(existing.getFestivalYear());
         SponsorshipCategory category = findOwnedCategory(dto.getCategoryId());
 
         existing.setSponsorName(dto.getSponsorName());
@@ -73,7 +79,8 @@ public class GeneralSponsorService {
 
     @Transactional
     public void delete(Long id) {
-        findOwnedEntity(id); // verifies ownership before deleting
+        GeneralSponsor existing = findOwnedEntity(id); // verifies ownership before deleting
+        festivalYearGuard.assertActive(existing.getFestivalYear());
         generalSponsorRepository.deleteById(id);
     }
 
@@ -91,13 +98,6 @@ public class GeneralSponsorService {
                 .orElseThrow(() -> new EntityNotFoundException("Festival year not found: " + festivalYearId));
         tenantContext.assertOwnedByCurrentTenant(year.getCommittee());
         return year;
-    }
-
-    private FestivalYear resolveFestivalYear(Long festivalYearId) {
-        if (festivalYearId != null) {
-            return findOwnedFestivalYear(festivalYearId);
-        }
-        return festivalYearRepository.findFirstByCommitteeIdAndActiveTrueOrderByIdDesc(tenantContext.requireCommitteeId()).orElse(null);
     }
 
     private GeneralSponsor findOwnedEntity(Long id) {

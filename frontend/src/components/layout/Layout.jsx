@@ -1,18 +1,27 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, HandCoins, Receipt, FileBarChart, Users, LogOut, Sparkles, CalendarDays, Gavel, Landmark, Gift, KeyRound, Eye, ShieldAlert, DoorOpen, Menu, X } from 'lucide-react'
+import { LayoutDashboard, HandCoins, Receipt, FileBarChart, Users, LogOut, Sparkles, CalendarDays, Gavel, Landmark, Gift, KeyRound, Eye, ShieldAlert, DoorOpen, Menu, X, Archive, Lock } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import ChangePasswordModal from '../common/ChangePasswordModal'
+import { festivalYearApi } from '../../api/festivalYearApi'
 
 const NAV_ITEMS = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/festival-setup', label: 'Festival Setup', icon: CalendarDays },
-  { to: '/collections', label: 'Collections', icon: HandCoins },
-  { to: '/expenses', label: 'Expenses', icon: Receipt },
-  { to: '/sponsorships', label: 'Sponsorships', icon: Gift, presidentOnly: true },
-  { to: '/auction', label: 'Auction', icon: Gavel },
+  // Active Festival Guard: these five require an active festival year to
+  // actually be usable (see FestivalYearGate) - lockedByYear just adds a
+  // small lock indicator here so it's visible before clicking in, it
+  // never removes the nav item or blocks the route itself.
+  { to: '/collections', label: 'Collections', icon: HandCoins, lockedByYear: true },
+  { to: '/expenses', label: 'Expenses', icon: Receipt, lockedByYear: true },
+  { to: '/sponsorships', label: 'Sponsorships', icon: Gift, presidentOnly: true, lockedByYear: true },
+  { to: '/auction', label: 'Auction', icon: Gavel, lockedByYear: true },
   { to: '/loans', label: 'Loans', icon: Landmark, presidentOnly: true },
-  { to: '/reports', label: 'Reports', icon: FileBarChart },
+  { to: '/reports', label: 'Reports', icon: FileBarChart, lockedByYear: true },
+  // Festival Archives is intentionally NEVER locked by the active-year
+  // guard above - browsing past, already-archived festivals must always
+  // work regardless of whether a new year has been set up yet.
+  { to: '/archives', label: 'Festival Archives', icon: Archive },
   // Staff management stays off-limits during Tenant Inspection, in both
   // modes (see InspectionModeFilter) - hidden here too so a Developer
   // inspecting never lands on a page that will only 403.
@@ -25,6 +34,17 @@ export default function Layout({ children, festivalName = 'Ganesh Utsav' }) {
   const [changePasswordOpen, setChangePasswordOpen] = useState(false)
   const [exiting, setExiting] = useState(false)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  // null while we don't know yet - avoids flashing a lock icon on every
+  // nav item for a split second before the check resolves
+  const [hasActiveYear, setHasActiveYear] = useState(null)
+
+  useEffect(() => {
+    let cancelled = false
+    festivalYearApi.getActive()
+      .then((year) => { if (!cancelled) setHasActiveYear(!!year) })
+      .catch(() => { if (!cancelled) setHasActiveYear(false) })
+    return () => { cancelled = true }
+  }, [])
 
   const handleLogout = () => {
     logout()
@@ -45,6 +65,8 @@ export default function Layout({ children, festivalName = 'Ganesh Utsav' }) {
     (!item.presidentOnly || user?.role === 'PRESIDENT') &&
     !(item.inspectionExcluded && user?.isInspecting)
   )
+
+  const isLocked = (item) => item.lockedByYear && hasActiveYear === false
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
@@ -80,7 +102,7 @@ export default function Layout({ children, festivalName = 'Ganesh Utsav' }) {
           </div>
         </div>
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {visibleNavItems.map(({ to, label, icon: Icon, end }) => (
+          {visibleNavItems.map(({ to, label, icon: Icon, end, ...item }) => (
             <NavLink
               key={to}
               to={to}
@@ -92,7 +114,8 @@ export default function Layout({ children, festivalName = 'Ganesh Utsav' }) {
               }
             >
               <Icon size={18} />
-              {label}
+              <span className="flex-1">{label}</span>
+              {isLocked(item) && <Lock size={13} className="text-saffron-300 shrink-0" />}
             </NavLink>
           ))}
         </nav>
@@ -148,7 +171,7 @@ export default function Layout({ children, festivalName = 'Ganesh Utsav' }) {
             Festival Setup, Sponsorships, Loans, and Committee entirely) */}
         {mobileNavOpen && (
           <nav className="md:hidden bg-maroon-800 text-white px-3 py-3 space-y-1 shadow-lg">
-            {visibleNavItems.map(({ to, label, icon: Icon, end }) => (
+            {visibleNavItems.map(({ to, label, icon: Icon, end, ...item }) => (
               <NavLink
                 key={to}
                 to={to}
@@ -161,7 +184,8 @@ export default function Layout({ children, festivalName = 'Ganesh Utsav' }) {
                 }
               >
                 <Icon size={18} />
-                {label}
+                <span className="flex-1">{label}</span>
+                {isLocked(item) && <Lock size={13} className="text-saffron-300 shrink-0" />}
               </NavLink>
             ))}
             <div className="border-t border-white/10 my-2" />

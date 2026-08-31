@@ -1,10 +1,19 @@
 package com.ganeshutsav.backend.service;
 
 // Project Entities & Repositories
+import com.ganeshutsav.backend.dto.FestivalAuditReportDTO;
+import com.ganeshutsav.backend.entity.AnnadanamSponsor;
+import com.ganeshutsav.backend.entity.AuctionItem;
 import com.ganeshutsav.backend.entity.Donation;
 import com.ganeshutsav.backend.entity.Expense;
+import com.ganeshutsav.backend.entity.ExpenseCategory;
+import com.ganeshutsav.backend.entity.FestivalYear;
+import com.ganeshutsav.backend.entity.GeneralSponsor;
+import com.ganeshutsav.backend.repository.AnnadanamSponsorRepository;
+import com.ganeshutsav.backend.repository.AuctionItemRepository;
 import com.ganeshutsav.backend.repository.DonationRepository;
 import com.ganeshutsav.backend.repository.ExpenseRepository;
+import com.ganeshutsav.backend.repository.GeneralSponsorRepository;
 import com.ganeshutsav.backend.security.TenantContext;
 
 // iText 8 PDF Imports
@@ -36,9 +45,11 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -46,6 +57,10 @@ public class ReportService {
 
     private final DonationRepository donationRepository;
     private final ExpenseRepository expenseRepository;
+    private final AuctionItemRepository auctionItemRepository;
+    private final GeneralSponsorRepository generalSponsorRepository;
+    private final AnnadanamSponsorRepository annadanamSponsorRepository;
+    private final FestivalYearGuard festivalYearGuard;
     private final TenantContext tenantContext;
 
     public byte[] generatePdfReport(LocalDate startDate, LocalDate endDate) throws IOException {
@@ -298,5 +313,102 @@ public class ReportService {
     private Cell headerCell(String text) {
         return new Cell().add(new Paragraph(text).setBold())
                 .setBackgroundColor(new DeviceRgb(255, 204, 128));
+    }
+
+    // ============================================================
+    // Festival Archives - detailed audit report for ONE festival
+    // year (active or archived). Read-only: does NOT go through
+    // FestivalYearGuard's active-only checks, since browsing a past
+    // year's full ledger is exactly the point - only ownership
+    // (loadOwned) is verified, via the same guard every other
+    // festival-year-scoped service already uses.
+    // ============================================================
+    public FestivalAuditReportDTO.Response generateFestivalAuditReport(Long festivalYearId) {
+        FestivalYear year = festivalYearGuard.loadOwned(festivalYearId);
+        Long yearId = year.getId();
+
+        List<Donation> donations = donationRepository.findByFestivalYearIdOrderByDonationDateDesc(yearId);
+        List<Expense> expenses = expenseRepository.findByFestivalYearIdOrderByExpenseDateDesc(yearId);
+        List<AuctionItem> auctionItems = auctionItemRepository.findByFestivalYearIdOrderByDayNumberAsc(yearId);
+        List<GeneralSponsor> generalSponsors = generalSponsorRepository.findByFestivalYearIdOrderByCreatedAtDesc(yearId);
+        List<AnnadanamSponsor> annadanamSponsors = annadanamSponsorRepository.findByFestivalYearIdOrderByDayNumberAsc(yearId);
+
+        BigDecimal totalCollections = donationRepository.getTotalCollectionByFestivalYear(yearId);
+        BigDecimal totalExpenses = expenseRepository.getTotalExpensesByFestivalYear(yearId);
+        BigDecimal totalAuctionEarnings = auctionItemRepository.getTotalAuctionAmount(yearId);
+        BigDecimal generalSponsorshipTotal = generalSponsorRepository.getTotalContributionByFestivalYear(yearId);
+        BigDecimal annadanamSponsorshipTotal = annadanamSponsorRepository.getTotalContributionByFestivalYear(yearId);
+        BigDecimal totalSponsorships = generalSponsorshipTotal.add(annadanamSponsorshipTotal);
+        BigDecimal carryForward = year.getCarryForwardBalance() != null ? year.getCarryForwardBalance() : BigDecimal.ZERO;
+
+        // carryForward + collections + sponsorships + auction earnings - expenses
+        BigDecimal netSurplusOrDeficit = carryForward
+                .add(totalCollections)
+                .add(totalSponsorships)
+                .add(totalAuctionEarnings)
+                .subtract(totalExpenses);
+
+        Map<String, BigDecimal> expenseByCategory = new LinkedHashMap<>();
+        for (ExpenseRepository.CategoryTotal ct : expenseRepository.getCategoryWiseTotalsByFestivalYear(yearId)) {
+            ExpenseCategory category = ct.getCategory();
+            expenseByCategory.put(category != null ? category.getLabel() : "Uncategorized", ct.getTotal());
+        }
+
+        return FestivalAuditReportDTO.Response.builder()
+                .festivalYearId(year.getId())
+                .label(year.getLabel())
+                .year(year.getYear())
+                .startDate(year.getStartDate())
+                .durationDays(year.getDurationDays())
+                .active(year.isActive())
+                .carryForwardBalance(carryForward)
+                .totalCollections(totalCollections)
+                .totalExpenses(totalExpenses)
+                .totalSponsorships(totalSponsorships)
+                .totalAuctionEarnings(totalAuctionEarnings)
+                .netSurplusOrDeficit(netSurplusOrDeficit)
+                .expenseByCategory(expenseByCategory)
+                .generalSponsorshipTotal(generalSponsorshipTotal)
+                .annadanamSponsorshipTotal(annadanamSponsorshipTotal)
+                .donations(donations.stream().map(d -> FestivalAuditReportDTO.LedgerDonationDTO.builder()
+                        .receiptNumber(d.getReceiptNumber())
+                        .donorName(d.getDonorName())
+                        .phoneNumber(d.getPhoneNumber())
+                        .amount(d.getAmount())
+                        .paymentMode(d.getPaymentMode() != null ? d.getPaymentMode().name() : null)
+                        .donationDate(d.getDonationDate())
+                        .recordedByName(d.getRecordedBy() != null ? d.getRecordedBy().getName() : null)
+                        .build()).collect(Collectors.toList()))
+                .expenses(expenses.stream().map(e -> FestivalAuditReportDTO.LedgerExpenseDTO.builder()
+                        .description(e.getDescription())
+                        .category(e.getCategory() != null ? e.getCategory().getLabel() : null)
+                        .amount(e.getAmount())
+                        .paidTo(e.getPaidTo())
+                        .expenseDate(e.getExpenseDate())
+                        .dayNumber(e.getDayNumber())
+                        .recordedByName(e.getRecordedBy() != null ? e.getRecordedBy().getName() : null)
+                        .build()).collect(Collectors.toList()))
+                .auctionItems(auctionItems.stream().map(a -> FestivalAuditReportDTO.LedgerAuctionItemDTO.builder()
+                        .dayNumber(a.getDayNumber())
+                        .itemName(a.getItemName())
+                        .winnerName(a.getWinnerName())
+                        .bidAmount(a.getBidAmount())
+                        .paymentStatus(a.getPaymentStatus() != null ? a.getPaymentStatus().name() : null)
+                        .recordedByName(a.getRecordedBy() != null ? a.getRecordedBy().getName() : null)
+                        .build()).collect(Collectors.toList()))
+                .generalSponsors(generalSponsors.stream().map(s -> FestivalAuditReportDTO.LedgerGeneralSponsorDTO.builder()
+                        .sponsorName(s.getSponsorName())
+                        .categoryName(s.getCategory() != null ? s.getCategory().getName() : null)
+                        .contributionAmount(s.getContributionAmount())
+                        .contactInfo(s.getContactInfo())
+                        .build()).collect(Collectors.toList()))
+                .annadanamSponsors(annadanamSponsors.stream().map(s -> FestivalAuditReportDTO.LedgerAnnadanamSponsorDTO.builder()
+                        .sponsorName(s.getSponsorName())
+                        .dayNumber(s.getDayNumber())
+                        .mealSlot(s.getMealSlot())
+                        .contributionAmount(s.getContributionAmount())
+                        .contactInfo(s.getContactInfo())
+                        .build()).collect(Collectors.toList()))
+                .build();
     }
 }

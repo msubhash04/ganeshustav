@@ -1,17 +1,21 @@
 import React, { useEffect, useState } from 'react'
-import { Plus, Gavel, Trash2 } from 'lucide-react'
+import { Plus, Trash2, Lock, CalendarPlus } from 'lucide-react'
 import Layout from '../components/layout/Layout'
 import Modal from '../components/common/Modal'
 import ResponsiveTable, { TableCard, CardActions, CardActionButton } from '../components/common/ResponsiveTable'
+import { Link } from 'react-router-dom'
 import { auctionApi } from '../api/auctionApi'
 import { festivalYearApi } from '../api/festivalYearApi'
 import { formatINR } from '../utils/format'
+import { useAuth } from '../context/AuthContext'
 
 const PAYMENT_MODES = ['CASH', 'UPI', 'BANK_TRANSFER', 'CHEQUE']
 
 const emptyForm = { dayNumber: '', itemName: '', winnerName: '', bidAmount: '', paymentStatus: 'PENDING', paymentMode: '' }
 
 export default function Auction() {
+  const { user } = useAuth()
+  const isPresident = user?.role === 'PRESIDENT'
   const [festivalYear, setFestivalYear] = useState(null)
   const [items, setItems] = useState([])
   const [total, setTotal] = useState(0)
@@ -54,7 +58,7 @@ export default function Auction() {
       setForm(emptyForm)
       loadItems(festivalYear.id)
     } catch (err) {
-      alert(err?.response?.data ? JSON.stringify(err.response.data) : 'Failed to save auction item')
+      alert(err?.response?.data?.error || err?.response?.data || 'Failed to save auction item')
     } finally {
       setSubmitting(false)
     }
@@ -70,9 +74,21 @@ export default function Auction() {
     return (
       <Layout>
         <h1 className="page-title mb-6">Auction / Velampata</h1>
-        <div className="card text-center py-10">
-          <Gavel className="mx-auto text-saffron-400 mb-2" size={32} />
-          <p className="text-maroon-500">No active festival year set up yet. Ask the President to create one under Festival Setup first.</p>
+        <div className="card text-center py-12 max-w-lg mx-auto">
+          <Lock className="mx-auto text-saffron-400 mb-3" size={32} />
+          <p className="text-maroon-700 font-semibold text-lg mb-1.5">
+            First create the Festival year to unlock these features.
+          </p>
+          <p className="text-sm text-maroon-500 mb-5">
+            {isPresident
+              ? "Set up this year's festival details to start recording auction items."
+              : "Ask your committee's President to set up this year's Festival before this section becomes available."}
+          </p>
+          {isPresident && (
+            <Link to="/festival-setup" className="btn-primary inline-flex items-center gap-2">
+              <CalendarPlus size={18} /> Go to Festival Setup
+            </Link>
+          )}
         </div>
       </Layout>
     )

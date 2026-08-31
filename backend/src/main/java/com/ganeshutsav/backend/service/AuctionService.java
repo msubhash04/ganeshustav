@@ -23,6 +23,7 @@ public class AuctionService {
 
     private final AuctionItemRepository auctionItemRepository;
     private final FestivalYearRepository festivalYearRepository;
+    private final FestivalYearGuard festivalYearGuard;
     private final TenantContext tenantContext;
 
     public List<AuctionItemDTO> getByFestivalYear(Long festivalYearId) {
@@ -38,7 +39,10 @@ public class AuctionService {
 
     @Transactional
     public AuctionItemDTO create(Long festivalYearId, AuctionItemDTO dto) {
-        FestivalYear year = findOwnedFestivalYear(festivalYearId);
+        // RULE: a new auction item can only ever be filed against the
+        // currently active festival year, whether or not one was
+        // explicitly requested (an archived year is rejected either way).
+        FestivalYear year = festivalYearGuard.resolveForNewRecord(festivalYearId);
         Committee committee = tenantContext.requireCommittee();
 
         AuctionItem item = AuctionItem.builder()
@@ -58,6 +62,9 @@ public class AuctionService {
     @Transactional
     public AuctionItemDTO update(Long id, AuctionItemDTO dto) {
         AuctionItem item = findOwnedEntity(id);
+        // RULE: a record filed under a since-archived festival year can
+        // no longer be modified.
+        festivalYearGuard.assertActive(item.getFestivalYear());
         item.setDayNumber(dto.getDayNumber());
         item.setItemName(dto.getItemName());
         item.setWinnerName(dto.getWinnerName());
@@ -69,7 +76,8 @@ public class AuctionService {
 
     @Transactional
     public void delete(Long id) {
-        findOwnedEntity(id); // verifies ownership before deleting
+        AuctionItem item = findOwnedEntity(id); // verifies ownership before deleting
+        festivalYearGuard.assertActive(item.getFestivalYear());
         auctionItemRepository.deleteById(id);
     }
 

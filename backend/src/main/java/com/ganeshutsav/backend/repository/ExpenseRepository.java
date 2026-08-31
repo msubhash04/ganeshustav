@@ -14,13 +14,24 @@ public interface ExpenseRepository extends JpaRepository<Expense, Long> {
 
     List<Expense> findByCommitteeIdOrderByExpenseDateDesc(Long committeeId);
     List<Expense> findTop10ByCommitteeIdOrderByCreatedAtDesc(Long committeeId);
+    List<Expense> findByFestivalYearIdOrderByExpenseDateDesc(Long festivalYearId);
+    List<Expense> findTop10ByFestivalYearIdOrderByCreatedAtDesc(Long festivalYearId);
 
     @Query("SELECT COALESCE(SUM(e.amount), 0) FROM Expense e WHERE e.committee.id = :committeeId")
     BigDecimal getTotalExpenses(@Param("committeeId") Long committeeId);
 
+    // scoped to a single festival year - used by the Dashboard (active
+    // year only) and the Festival Archives audit report (any owned year)
+    @Query("SELECT COALESCE(SUM(e.amount), 0) FROM Expense e WHERE e.festivalYear.id = :festivalYearId")
+    BigDecimal getTotalExpensesByFestivalYear(@Param("festivalYearId") Long festivalYearId);
+
     @Query("SELECT e.category as category, COALESCE(SUM(e.amount),0) as total FROM Expense e " +
            "WHERE e.committee.id = :committeeId GROUP BY e.category")
     List<CategoryTotal> getCategoryWiseTotals(@Param("committeeId") Long committeeId);
+
+    @Query("SELECT e.category as category, COALESCE(SUM(e.amount),0) as total FROM Expense e " +
+           "WHERE e.festivalYear.id = :festivalYearId GROUP BY e.category")
+    List<CategoryTotal> getCategoryWiseTotalsByFestivalYear(@Param("festivalYearId") Long festivalYearId);
 
     // MULTI-TENANT SAFETY: committeeId always comes from the authenticated
     // caller's own committee via TenantContext - never from client input

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { Plus, Search } from 'lucide-react'
 import Layout from '../components/layout/Layout'
 import Modal from '../components/common/Modal'
+import FestivalYearGate from '../components/common/FestivalYearGate'
 import ExpenseForm from '../components/expenses/ExpenseForm'
 import ExpenseTable from '../components/expenses/ExpenseTable'
 import { expenseApi, EXPENSE_CATEGORIES } from '../api/expenseApi'
@@ -70,57 +71,61 @@ export default function Expenses() {
 
   return (
     <Layout>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
-        <h1 className="page-title">Expenses</h1>
-        <button onClick={handleAdd} className="btn-primary inline-flex items-center gap-2 w-fit">
-          <Plus size={18} /> Add Expense
-        </button>
-      </div>
+      <h1 className="page-title mb-6">Expenses</h1>
 
-      <div className="card mb-6 bg-gradient-to-r from-maroon-700 to-maroon-800 text-white">
-        <p className="text-sm opacity-90">Total Expenses</p>
-        <p className="text-3xl font-bold">{formatINR(total)}</p>
-      </div>
-
-      <form onSubmit={handleFilterSubmit} className="card mb-6 grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
-        <div>
-          <label className="label-text">Category</label>
-          <select className="input-field" value={filters.category}
-                  onChange={(e) => setFilters({ ...filters, category: e.target.value })}>
-            <option value="">All Categories</option>
-            {EXPENSE_CATEGORIES.map((c) => (
-              <option key={c.value} value={c.value}>{c.label}</option>
-            ))}
-          </select>
+      <FestivalYearGate>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+          <p className="text-sm text-maroon-500">Every rupee spent this festival, itemized by category and day.</p>
+          <button onClick={handleAdd} className="btn-primary inline-flex items-center gap-2 w-fit">
+            <Plus size={18} /> Add Expense
+          </button>
         </div>
-        <div>
-          <label className="label-text">From Date</label>
-          <input type="date" className="input-field" value={filters.startDate}
-                 onChange={(e) => setFilters({ ...filters, startDate: e.target.value })} />
+
+        <div className="card mb-6 bg-gradient-to-r from-maroon-700 to-maroon-800 text-white">
+          <p className="text-sm opacity-90">Total Expenses</p>
+          <p className="text-3xl font-bold">{formatINR(total)}</p>
         </div>
-        <div>
-          <label className="label-text">To Date</label>
-          <input type="date" className="input-field" value={filters.endDate}
-                 onChange={(e) => setFilters({ ...filters, endDate: e.target.value })} />
+
+        <form onSubmit={handleFilterSubmit} className="card mb-6 grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
+          <div>
+            <label className="label-text">Category</label>
+            <select className="input-field" value={filters.category}
+                    onChange={(e) => setFilters({ ...filters, category: e.target.value })}>
+              <option value="">All Categories</option>
+              {EXPENSE_CATEGORIES.map((c) => (
+                <option key={c.value} value={c.value}>{c.label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="label-text">From Date</label>
+            <input type="date" className="input-field" value={filters.startDate}
+                   onChange={(e) => setFilters({ ...filters, startDate: e.target.value })} />
+          </div>
+          <div>
+            <label className="label-text">To Date</label>
+            <input type="date" className="input-field" value={filters.endDate}
+                   onChange={(e) => setFilters({ ...filters, endDate: e.target.value })} />
+          </div>
+          <button type="submit" className="btn-secondary inline-flex items-center justify-center gap-2">
+            <Search size={16} /> Filter
+          </button>
+        </form>
+
+        {error && <div className="card bg-maroon-50 border-maroon-200 text-maroon-700 mb-6">{error}</div>}
+
+        <div className="card">
+          {loading ? (
+            <p className="text-maroon-400">Loading…</p>
+          ) : (
+            <ExpenseTable expenses={expenses} onEdit={handleEdit} onDelete={handleDelete} />
+          )}
         </div>
-        <button type="submit" className="btn-secondary inline-flex items-center justify-center gap-2">
-          <Search size={16} /> Filter
-        </button>
-      </form>
 
-      {error && <div className="card bg-maroon-50 border-maroon-200 text-maroon-700 mb-6">{error}</div>}
-
-      <div className="card">
-        {loading ? (
-          <p className="text-maroon-400">Loading…</p>
-        ) : (
-          <ExpenseTable expenses={expenses} onEdit={handleEdit} onDelete={handleDelete} />
-        )}
-      </div>
-
-      <Modal open={formOpen} onClose={() => setFormOpen(false)} title={editing ? 'Edit Expense' : 'Add New Expense'}>
-        <ExpenseForm initialData={editing} onSubmit={handleSubmit} onCancel={() => setFormOpen(false)} submitting={submitting} />
-      </Modal>
+        <Modal open={formOpen} onClose={() => setFormOpen(false)} title={editing ? 'Edit Expense' : 'Add New Expense'}>
+          <ExpenseForm initialData={editing} onSubmit={handleSubmit} onCancel={() => setFormOpen(false)} submitting={submitting} />
+        </Modal>
+      </FestivalYearGate>
     </Layout>
   )
 }

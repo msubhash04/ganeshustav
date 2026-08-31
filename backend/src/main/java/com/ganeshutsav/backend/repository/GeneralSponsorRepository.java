@@ -9,4 +9,9 @@ public interface GeneralSponsorRepository extends JpaRepository<GeneralSponsor, 
     List<GeneralSponsor> findByCommitteeIdOrderByCreatedAtDesc(Long committeeId);
     List<GeneralSponsor> findByFestivalYearIdOrderByCreatedAtDesc(Long festivalYearId);
     boolean existsByCategoryId(Long categoryId);
+
+    // used by the Festival Archives audit report's category breakdown
+    @org.springframework.data.jpa.repository.Query(
+        "SELECT COALESCE(SUM(g.contributionAmount),0) FROM GeneralSponsor g WHERE g.festivalYear.id = :festivalYearId")
+    java.math.BigDecimal getTotalContributionByFestivalYear(Long festivalYearId);
 }

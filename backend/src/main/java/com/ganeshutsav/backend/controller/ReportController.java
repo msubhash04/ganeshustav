@@ -1,5 +1,6 @@
 package com.ganeshutsav.backend.controller;
 
+import com.ganeshutsav.backend.dto.FestivalAuditReportDTO;
 import com.ganeshutsav.backend.service.ReportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -7,6 +8,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -20,6 +22,16 @@ import java.time.LocalDate;
 public class ReportController {
 
     private final ReportService reportService;
+
+    // Festival Archives - detailed, read-only audit report for ONE
+    // festival year (active or archived). Deliberately open to every
+    // authenticated committee role (President, Treasurer, Secretary,
+    // Volunteer) - unlike creating/editing a festival year, VIEWING a
+    // past year's full financial picture is not President-restricted.
+    @GetMapping("/festival-audit/{festivalYearId}")
+    public FestivalAuditReportDTO.Response getFestivalAuditReport(@PathVariable Long festivalYearId) {
+        return reportService.generateFestivalAuditReport(festivalYearId);
+    }
 
     @GetMapping("/pdf")
     public ResponseEntity<byte[]> downloadPdf(

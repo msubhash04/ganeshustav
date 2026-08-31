@@ -5,7 +5,6 @@ import com.ganeshutsav.backend.entity.Committee;
 import com.ganeshutsav.backend.entity.Donation;
 import com.ganeshutsav.backend.entity.FestivalYear;
 import com.ganeshutsav.backend.repository.DonationRepository;
-import com.ganeshutsav.backend.repository.FestivalYearRepository;
 import com.ganeshutsav.backend.security.TenantContext;
 import com.ganeshutsav.backend.util.ReceiptNumberGenerator;
 import jakarta.persistence.EntityNotFoundException;
@@ -25,7 +24,7 @@ public class DonationService {
 
     private final DonationRepository donationRepository;
     private final ReceiptNumberGenerator receiptNumberGenerator;
-    private final FestivalYearRepository festivalYearRepository;
+    private final FestivalYearGuard festivalYearGuard;
     private final TenantContext tenantContext;
 
     public List<DonationDTO> getAll() {
@@ -50,7 +49,11 @@ public class DonationService {
     @Transactional
     public DonationDTO create(DonationDTO dto) {
         Committee committee = tenantContext.requireCommittee();
-        FestivalYear year = resolveFestivalYear(dto.getFestivalYearId(), committee.getId());
+        // RULE: a new collection can only ever be filed against the
+        // currently active festival year - throws with the standard
+        // "First create the Festival year..." message if none exists,
+        // or if the requested year has since been archived.
+        FestivalYear year = festivalYearGuard.resolveForNewRecord(dto.getFestivalYearId());
         Donation donation = Donation.builder()
                 .committee(committee)
                 .receiptNumber(receiptNumberGenerator.next())
@@ -66,21 +69,12 @@ public class DonationService {
         return toDTO(donationRepository.save(donation));
     }
 
-    // uses the explicitly provided festival year (if it belongs to the
-    // caller's own committee), or falls back to whichever year is
-    // currently marked active for that committee
-    private FestivalYear resolveFestivalYear(Long festivalYearId, Long committeeId) {
-        if (festivalYearId != null) {
-            return festivalYearRepository.findById(festivalYearId)
-                    .filter(y -> y.getCommittee().getId().equals(committeeId))
-                    .orElse(null);
-        }
-        return festivalYearRepository.findFirstByCommitteeIdAndActiveTrueOrderByIdDesc(committeeId).orElse(null);
-    }
-
     @Transactional
     public DonationDTO update(Long id, DonationDTO dto) {
         Donation existing = findOwnedEntity(id);
+        // RULE: a record filed under a since-archived festival year can
+        // no longer be modified.
+        festivalYearGuard.assertActive(existing.getFestivalYear());
         existing.setDonorName(dto.getDonorName());
         existing.setPhoneNumber(dto.getPhoneNumber());
         existing.setAddress(dto.getAddress());
@@ -92,7 +86,8 @@ public class DonationService {
 
     @Transactional
     public void delete(Long id) {
-        findOwnedEntity(id); // verifies ownership before deleting
+        Donation existing = findOwnedEntity(id); // verifies ownership before deleting
+        festivalYearGuard.assertActive(existing.getFestivalYear());
         donationRepository.deleteById(id);
     }
 
