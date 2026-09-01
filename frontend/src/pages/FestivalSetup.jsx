@@ -160,7 +160,7 @@ export default function FestivalSetup() {
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
+            <div className="min-w-0">
               <label className="label-text">Start Date *</label>
               <input type="date" className="input-field" value={form.startDate}
                      onChange={(e) => setForm({ ...form, startDate: e.target.value })} required />

@@ -103,12 +103,12 @@ export default function Collections() {
             <input className="input-field" placeholder="Donor name" value={filters.name}
                    onChange={(e) => setFilters({ ...filters, name: e.target.value })} />
           </div>
-          <div>
+          <div className="min-w-0">
             <label className="label-text">From Date</label>
             <input type="date" className="input-field" value={filters.startDate}
                    onChange={(e) => setFilters({ ...filters, startDate: e.target.value })} />
           </div>
-          <div>
+          <div className="min-w-0">
             <label className="label-text">To Date</label>
             <input type="date" className="input-field" value={filters.endDate}
                    onChange={(e) => setFilters({ ...filters, endDate: e.target.value })} />

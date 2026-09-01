@@ -82,7 +82,7 @@ export default function DonationForm({ initialData, onSubmit, onCancel, submitti
             ))}
           </select>
         </div>
-        <div>
+        <div className="min-w-0">
           <label className="label-text">Date *</label>
           <input type="date" className="input-field" value={form.donationDate} onChange={handleChange('donationDate')} />
           {errors.donationDate && <p className="text-xs text-maroon-600 mt-1">{errors.donationDate}</p>}

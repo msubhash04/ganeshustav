@@ -94,7 +94,7 @@ export default function ExpenseForm({ initialData, onSubmit, onCancel, submittin
             ))}
           </select>
         </div>
-        <div>
+        <div className="min-w-0">
           <label className="label-text">Date *</label>
           <input type="date" className="input-field" value={form.expenseDate} onChange={handleChange('expenseDate')} />
           {errors.expenseDate && <p className="text-xs text-maroon-600 mt-1">{errors.expenseDate}</p>}

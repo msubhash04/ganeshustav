@@ -232,7 +232,7 @@ export default function Loans() {
                      onChange={(e) => setLoanForm({ ...loanForm, monthlyInterestRatePercent: e.target.value })} required />
             </div>
           </div>
-          <div>
+          <div className="min-w-0">
             <label className="label-text">Loan Date *</label>
             <input type="date" className="input-field" value={loanForm.loanDate} onChange={(e) => setLoanForm({ ...loanForm, loanDate: e.target.value })} required />
           </div>
@@ -248,7 +248,7 @@ export default function Loans() {
       {/* Record Repayment modal */}
       <Modal open={!!repayLoanId} onClose={() => setRepayLoanId(null)} title="Record Repayment">
         <form onSubmit={handleRepay} className="space-y-4">
-          <div>
+          <div className="min-w-0">
             <label className="label-text">Payment Date *</label>
             <input type="date" className="input-field" value={repayForm.paymentDate}
                    onChange={(e) => setRepayForm({ ...repayForm, paymentDate: e.target.value })} required />

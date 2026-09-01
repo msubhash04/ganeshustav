@@ -37,12 +37,12 @@ export default function Reports() {
         <div className="card mb-6">
           <h3 className="font-semibold text-maroon-800 mb-4">Generate Custom Report</h3>
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end mb-2">
-            <div>
+            <div className="min-w-0">
               <label className="label-text">From Date</label>
               <input type="date" className="input-field" value={range.startDate}
                      onChange={(e) => setRange({ ...range, startDate: e.target.value })} />
             </div>
-            <div>
+            <div className="min-w-0">
               <label className="label-text">To Date</label>
               <input type="date" className="input-field" value={range.endDate}
                      onChange={(e) => setRange({ ...range, endDate: e.target.value })} />

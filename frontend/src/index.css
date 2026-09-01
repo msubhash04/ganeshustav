@@ -14,6 +14,25 @@
   h1, h2, h3, h4 {
     @apply font-display;
   }
+
+  /* Native <input type="date"> ships its own internal calendar-icon +
+     segment layout with a browser-enforced intrinsic minimum width that
+     can silently win over an explicit width:100%, especially on mobile
+     WebKit - which is what makes date fields bleed past their card on
+     narrow screens while an identically-styled text input next to them
+     stays perfectly aligned. Resetting the native appearance and being
+     explicit about box-sizing/min-width forces it to actually honor the
+     same width as every other .input-field, everywhere in the app. */
+  input[type="date"] {
+    -webkit-appearance: none;
+    appearance: none;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+  }
+  input[type="date"]::-webkit-date-and-time-value {
+    text-align: left;
+  }
 }
 
 @layer components {
@@ -29,7 +48,7 @@
            hover:bg-saffron-50 transition;
   }
   .input-field {
-    @apply w-full border border-saffron-200 rounded-xl px-3.5 py-2.5 bg-white
+    @apply w-full min-w-0 border border-saffron-200 rounded-xl px-3.5 py-2.5 bg-white
            focus:outline-none focus:ring-2 focus:ring-saffron-400 focus:border-transparent transition;
   }
   .label-text {
