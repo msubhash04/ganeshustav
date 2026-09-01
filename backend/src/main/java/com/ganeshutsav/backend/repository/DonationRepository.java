@@ -48,6 +48,10 @@ public interface DonationRepository extends JpaRepository<Donation, Long> {
 
     long countByCommitteeId(Long committeeId);
 
+    // Public "Read-Only Observation Dashboard" needs a donor count scoped
+    // to one specific festival year (not the committee's all-time total)
+    long countByFestivalYearId(Long festivalYearId);
+
     // used by the Developer's global overview dashboard - intentionally NOT
     // committee-scoped, and only ever called from DEVELOPER-gated code paths
     @Query("SELECT COALESCE(SUM(d.amount), 0) FROM Donation d")

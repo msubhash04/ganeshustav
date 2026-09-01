@@ -16,6 +16,11 @@ import DeveloperDashboard from './pages/DeveloperDashboard'
 import Committees from './pages/Committees'
 import InspectionLog from './pages/InspectionLog'
 import FestivalArchives from './pages/FestivalArchives'
+import Landing from './pages/Landing'
+import PublicObserve from './pages/PublicObserve'
+import PrivacyPolicy from './pages/PrivacyPolicy'
+import TermsOfService from './pages/TermsOfService'
+import Support from './pages/Support'
 import { useAuth } from './context/AuthContext'
 
 // The Developer (Super Admin) role has no committee, so every
@@ -26,13 +31,27 @@ function RoleRoot() {
   return user?.role === 'DEVELOPER' ? <DeveloperDashboard /> : <Dashboard />
 }
 
+// "/" is the public Landing page for a logged-out visitor, and the
+// normal authenticated dashboard for anyone already logged in - exactly
+// what it always was for logged-in users (no ProtectedRoute redirect-to-
+// login here), just with a real homepage for everyone else instead of
+// being force-redirected to /login.
+function RootRoute() {
+  const { isAuthenticated } = useAuth()
+  return isAuthenticated ? <RoleRoot /> : <Landing />
+}
+
 export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/public/:tenantCode" element={<PublicTransparency />} />
+      <Route path="/observe/:tenantCode" element={<PublicObserve />} />
+      <Route path="/privacy" element={<PrivacyPolicy />} />
+      <Route path="/terms" element={<TermsOfService />} />
+      <Route path="/support" element={<Support />} />
 
-      <Route path="/" element={<ProtectedRoute><RoleRoot /></ProtectedRoute>} />
+      <Route path="/" element={<RootRoute />} />
       <Route path="/committees" element={<ProtectedRoute><Committees /></ProtectedRoute>} />
       <Route path="/inspection-log" element={<ProtectedRoute><InspectionLog /></ProtectedRoute>} />
       <Route path="/festival-setup" element={<ProtectedRoute><FestivalSetup /></ProtectedRoute>} />

@@ -26,6 +26,13 @@ export const reportApi = {
 
 export const publicApi = {
   getTransparency: (tenantCode) => axiosClient.get(`/public/transparency/${tenantCode}`).then((res) => res.data),
+  // New, festival-year-scoped endpoints for the landing page's Public
+  // Committee Viewer and Read-Only Observation Dashboard - separate
+  // from getTransparency above (all-time totals), left untouched.
+  observeActive: (tenantCode) => axiosClient.get(`/public/observe/${tenantCode}`).then((res) => res.data),
+  getYearOptions: (tenantCode) => axiosClient.get(`/public/committees/${tenantCode}/years`).then((res) => res.data),
+  getYearSummary: (tenantCode, festivalYearId) =>
+    axiosClient.get(`/public/committees/${tenantCode}/years/${festivalYearId}/summary`).then((res) => res.data),
 }
 
 export const memberApi = {
