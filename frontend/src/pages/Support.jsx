@@ -1,6 +1,6 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, Mail, Search, LogIn, KeyRound } from 'lucide-react'
+import { ArrowLeft, Mail, MapPin, Search, LogIn, KeyRound } from 'lucide-react'
 import Footer from '../components/common/Footer'
 
 const TOPICS = [
@@ -51,15 +51,21 @@ export default function Support() {
           ))}
         </div>
 
-        <div className="card bg-gradient-to-r from-saffron-500 to-maroon-600 text-white">
+        <div className="card bg-gradient-to-r from-saffron-500 to-maroon-600 text-white space-y-4">
           <div className="flex items-center gap-3">
             <Mail size={20} className="shrink-0" />
             <div>
               <p className="font-semibold">Still need help?</p>
-              <a href="mailto:support@ganeshustav.app" className="text-saffron-100 underline underline-offset-2">
-                support@ganeshustav.app
+              <a href="mailto:help@lenvytechnologies.in" className="text-saffron-100 underline underline-offset-2">
+                help@lenvytechnologies.in
               </a>
             </div>
+          </div>
+          <div className="flex items-start gap-3 pt-4 border-t border-white/20">
+            <MapPin size={20} className="shrink-0 mt-0.5" />
+            <p className="text-sm text-saffron-50 leading-relaxed">
+              7th Floor, Summit B, Brigade Metropolis, Whitefield Main Rd, Mahadevapura, Bengaluru, Karnataka 560048, India
+            </p>
           </div>
         </div>
       </main>

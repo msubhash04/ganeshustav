@@ -21,6 +21,7 @@ import PublicObserve from './pages/PublicObserve'
 import PrivacyPolicy from './pages/PrivacyPolicy'
 import TermsOfService from './pages/TermsOfService'
 import Support from './pages/Support'
+import About from './pages/About'
 import { useAuth } from './context/AuthContext'
 
 // The Developer (Super Admin) role has no committee, so every
@@ -50,6 +51,7 @@ export default function App() {
       <Route path="/privacy" element={<PrivacyPolicy />} />
       <Route path="/terms" element={<TermsOfService />} />
       <Route path="/support" element={<Support />} />
+      <Route path="/about" element={<About />} />
 
       <Route path="/" element={<RootRoute />} />
       <Route path="/committees" element={<ProtectedRoute><Committees /></ProtectedRoute>} />
