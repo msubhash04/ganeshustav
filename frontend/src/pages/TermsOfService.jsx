@@ -1,19 +1,12 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
+import PublicPageHeader from '../components/common/PublicPageHeader'
 import Footer from '../components/common/Footer'
 
 export default function TermsOfService() {
   return (
     <div className="min-h-screen flex flex-col bg-cream">
-      <header className="px-4 md:px-8 py-4 flex items-center justify-between">
-        <Link to="/" className="inline-flex items-center gap-1.5 text-sm text-maroon-500 hover:text-maroon-700 transition">
-          <ArrowLeft size={16} /> Back to Home
-        </Link>
-        <div className="flex items-center gap-2 text-maroon-800 font-display font-bold">
-          <span className="text-xl">🐘</span> Ganesh Utsav
-        </div>
-      </header>
+      <PublicPageHeader />
 
       <main className="flex-1 max-w-2xl mx-auto px-4 py-8 w-full">
         <h1 className="page-title mb-1">Terms of Service</h1>

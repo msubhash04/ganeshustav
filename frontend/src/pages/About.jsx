@@ -1,6 +1,7 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, Sparkles } from 'lucide-react'
+import PublicPageHeader from '../components/common/PublicPageHeader'
+import { Sparkles } from 'lucide-react'
 import Footer from '../components/common/Footer'
 
 const TEAM = [
@@ -23,14 +24,7 @@ const TEAM = [
 export default function About() {
   return (
     <div className="min-h-screen flex flex-col bg-cream">
-      <header className="px-4 md:px-8 py-4 flex items-center justify-between">
-        <Link to="/" className="inline-flex items-center gap-1.5 text-sm text-maroon-500 hover:text-maroon-700 transition">
-          <ArrowLeft size={16} /> Back to Home
-        </Link>
-        <div className="flex items-center gap-2 text-maroon-800 font-display font-bold">
-          <span className="text-xl">🐘</span> Ganesh Utsav
-        </div>
-      </header>
+      <PublicPageHeader />
 
       <main className="flex-1 max-w-3xl mx-auto px-4 py-8 md:py-12 w-full">
         <span className="badge bg-saffron-100 text-saffron-700 mb-4">About Us</span>

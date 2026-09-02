@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -15,6 +16,13 @@ import java.util.Map;
  * numbers, receipt numbers, winner names, or any other itemized ledger
  * row; only totals and a category breakdown, same privacy guarantee as
  * the existing /api/public/transparency/{tenantCode} endpoint.
+ *
+ * EXCEPTION: general and Annadanam sponsors ARE named here, deliberately
+ * - unlike anonymous donors, sponsors are named partners a committee
+ * publicly credits (a physical "sponsor board" at the pandal would show
+ * the same names), so listing sponsorName + what they sponsored is
+ * expected, not a privacy leak. Their contactInfo (phone/email) is still
+ * never included.
  */
 public class PublicYearSummaryDTO {
 
@@ -42,6 +50,8 @@ public class PublicYearSummaryDTO {
         private BigDecimal netSurplusOrDeficit;
         private Map<String, BigDecimal> expenseByCategory;
         private long totalDonorCount;
+        private List<GeneralSponsor> generalSponsors;
+        private List<AnnadanamSponsor> annadanamSponsors;
     }
 
     @Data
@@ -53,5 +63,28 @@ public class PublicYearSummaryDTO {
         private String label;
         private Integer year;
         private boolean active;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class GeneralSponsor {
+        private String sponsorName;
+        private String categoryName;
+        private BigDecimal contributionAmount;
+        private String contributionDetails;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class AnnadanamSponsor {
+        private String sponsorName;
+        private Integer dayNumber;
+        private String mealSlot;
+        private BigDecimal contributionAmount;
+        private String contributionDetails;
     }
 }

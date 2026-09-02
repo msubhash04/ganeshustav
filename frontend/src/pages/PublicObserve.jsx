@@ -1,14 +1,27 @@
 import React, { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
+import PublicPageHeader from '../components/common/PublicPageHeader'
 import {
-  Wallet, TrendingDown, PiggyBank, Gift, Gavel, Coins, Eye, ArrowLeft,
-  Archive, CheckCircle2, Loader2,
+  Wallet, TrendingDown, PiggyBank, Gift, Gavel, Coins, Eye,
+  Archive, CheckCircle2, Loader2, Soup,
 } from 'lucide-react'
 import Footer from '../components/common/Footer'
 import SummaryCard from '../components/common/SummaryCard'
 import ExpensePieChart from '../components/charts/ExpensePieChart'
 import { publicApi } from '../api/reportApi'
 import { formatINR, formatDate } from '../utils/format'
+
+// Groups an already day-sorted Annadanam sponsor list into
+// [[dayNumber, sponsors[]], ...] pairs, preserving day order - the
+// backend already returns them ordered by dayNumber ascending.
+function groupByDay(sponsors) {
+  const groups = new Map()
+  for (const s of sponsors) {
+    if (!groups.has(s.dayNumber)) groups.set(s.dayNumber, [])
+    groups.get(s.dayNumber).push(s)
+  }
+  return Array.from(groups.entries())
+}
 
 // Public, unauthenticated "Read-Only Observation Dashboard" - reachable
 // via the landing page's committee-code search, or a shared link like
@@ -64,14 +77,7 @@ export default function PublicObserve() {
         )}
       </div>
 
-      <header className="px-4 md:px-8 py-4 flex items-center justify-between">
-        <Link to="/" className="inline-flex items-center gap-1.5 text-sm text-maroon-500 hover:text-maroon-700 transition">
-          <ArrowLeft size={16} /> Back to Home
-        </Link>
-        <div className="flex items-center gap-2 text-maroon-800 font-display font-bold">
-          <span className="text-xl">🐘</span> Ganesh Utsav
-        </div>
-      </header>
+      <PublicPageHeader />
 
       <main className="flex-1 max-w-4xl mx-auto px-4 py-6 w-full">
         {state === 'loading' && (
@@ -133,6 +139,59 @@ export default function PublicObserve() {
                   <div className="card mb-6">
                     <h3 className="font-semibold text-maroon-800 mb-2">How Funds Were Used</h3>
                     <ExpensePieChart data={summary.expenseByCategory} />
+                  </div>
+                )}
+
+                {summary.generalSponsors?.length > 0 && (
+                  <div className="card mb-6">
+                    <h3 className="font-semibold text-maroon-800 mb-4 flex items-center gap-2">
+                      <Gift size={16} className="text-saffron-500" /> Sponsors
+                    </h3>
+                    <div className="divide-y divide-saffron-50">
+                      {summary.generalSponsors.map((s, i) => (
+                        <div key={i} className="flex items-start justify-between gap-3 py-3 first:pt-0 last:pb-0">
+                          <div className="min-w-0">
+                            <p className="font-medium text-maroon-800">{s.sponsorName}</p>
+                            <p className="text-xs text-maroon-400 mt-0.5">
+                              {s.contributionDetails || `Sponsored ${s.categoryName}`}
+                            </p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <span className="badge bg-saffron-100 text-saffron-700">{s.categoryName}</span>
+                            {s.contributionAmount ? (
+                              <p className="text-sm font-semibold text-saffron-600 mt-1">{formatINR(s.contributionAmount)}</p>
+                            ) : null}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {summary.annadanamSponsors?.length > 0 && (
+                  <div className="card mb-6">
+                    <h3 className="font-semibold text-maroon-800 mb-4 flex items-center gap-2">
+                      <Soup size={16} className="text-gold-600" /> Annadanam Sponsors
+                    </h3>
+                    <div className="space-y-5">
+                      {groupByDay(summary.annadanamSponsors).map(([day, sponsors]) => (
+                        <div key={day}>
+                          <p className="text-xs font-semibold text-maroon-500 uppercase tracking-wide mb-2">Day {day}</p>
+                          <div className="flex flex-wrap gap-2">
+                            {sponsors.map((s, i) => (
+                              <span
+                                key={i}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gold-500/10 text-maroon-700 text-sm"
+                                title={s.contributionDetails || undefined}
+                              >
+                                {s.sponsorName}
+                                {s.mealSlot && <span className="text-maroon-400 text-xs">· {s.mealSlot}</span>}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 

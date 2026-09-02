@@ -45,6 +45,21 @@ export default {
       boxShadow: {
         card: '0 2px 10px rgba(122, 31, 24, 0.08)',
       },
+      keyframes: {
+        heartbeat: {
+          '0%, 100%': { transform: 'scale(1)' },
+          '14%': { transform: 'scale(1.18)' },
+          '28%': { transform: 'scale(1)' },
+          '42%': { transform: 'scale(1.18)' },
+          '70%': { transform: 'scale(1)' },
+        },
+      },
+      animation: {
+        // A real double-beat rhythm (beat-beat-pause), not a plain pulse -
+        // used on the "Back" button on public pages to draw a first-time
+        // visitor's eye to it without being a distracting loop forever.
+        heartbeat: 'heartbeat 2.2s ease-in-out infinite',
+      },
     },
   },
   plugins: [],

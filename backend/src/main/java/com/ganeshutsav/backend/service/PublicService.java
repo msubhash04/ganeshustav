@@ -2,6 +2,8 @@ package com.ganeshutsav.backend.service;
 
 import com.ganeshutsav.backend.dto.PublicYearSummaryDTO.Response;
 import com.ganeshutsav.backend.dto.PublicYearSummaryDTO.YearOption;
+import com.ganeshutsav.backend.dto.PublicYearSummaryDTO.GeneralSponsor;
+import com.ganeshutsav.backend.dto.PublicYearSummaryDTO.AnnadanamSponsor;
 import com.ganeshutsav.backend.entity.Committee;
 import com.ganeshutsav.backend.entity.ExpenseCategory;
 import com.ganeshutsav.backend.entity.FestivalYear;
@@ -120,6 +122,30 @@ public class PublicService {
             expenseByCategory.put(category != null ? category.getLabel() : "Uncategorized", ct.getTotal());
         }
 
+        // Named sponsors, deliberately - see the class-level note on
+        // PublicYearSummaryDTO for why this differs from every other
+        // field here (donor names, phone numbers, etc. stay private).
+        List<GeneralSponsor> generalSponsors = generalSponsorRepository.findByFestivalYearIdOrderByCreatedAtDesc(yearId)
+                .stream()
+                .map(s -> GeneralSponsor.builder()
+                        .sponsorName(s.getSponsorName())
+                        .categoryName(s.getCategory() != null ? s.getCategory().getName() : "General")
+                        .contributionAmount(s.getContributionAmount())
+                        .contributionDetails(s.getContributionDetails())
+                        .build())
+                .collect(Collectors.toList());
+
+        List<AnnadanamSponsor> annadanamSponsors = annadanamSponsorRepository.findByFestivalYearIdOrderByDayNumberAsc(yearId)
+                .stream()
+                .map(s -> AnnadanamSponsor.builder()
+                        .sponsorName(s.getSponsorName())
+                        .dayNumber(s.getDayNumber())
+                        .mealSlot(s.getMealSlot())
+                        .contributionAmount(s.getContributionAmount())
+                        .contributionDetails(s.getContributionDetails())
+                        .build())
+                .collect(Collectors.toList());
+
         return Response.builder()
                 .committeeName(committee.getName())
                 .tenantCode(committee.getTenantCode())
@@ -137,6 +163,8 @@ public class PublicService {
                 .netSurplusOrDeficit(netSurplusOrDeficit)
                 .expenseByCategory(expenseByCategory)
                 .totalDonorCount(donationRepository.countByFestivalYearId(yearId))
+                .generalSponsors(generalSponsors)
+                .annadanamSponsors(annadanamSponsors)
                 .build();
     }
 }
