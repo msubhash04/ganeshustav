@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { LayoutDashboard, HandCoins, Receipt, FileBarChart, Users, LogOut, Sparkles, CalendarDays, Gavel, Landmark, Gift, KeyRound, Eye, ShieldAlert, DoorOpen, Menu, X, Archive, Lock } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import ChangePasswordModal from '../common/ChangePasswordModal'
+import MobileNavDrawer from './MobileNavDrawer'
 import { festivalYearApi } from '../../api/festivalYearApi'
 
 const NAV_ITEMS = [
@@ -169,9 +170,20 @@ export default function Layout({ children, festivalName = 'Ganesh Utsav' }) {
 
         {/* Mobile nav drawer - every screen the desktop sidebar has,
             reachable on mobile too (a curated bottom tab bar used to hide
-            Festival Setup, Sponsorships, Loans, and Committee entirely) */}
-        {mobileNavOpen && (
-          <nav className="md:hidden bg-maroon-800 text-white px-3 py-3 space-y-1 shadow-lg">
+            Festival Setup, Sponsorships, Loans, and Committee entirely).
+            Rendered as a fixed overlay (see MobileNavDrawer) so opening
+            it never pushes the page content below the header down. */}
+        <MobileNavDrawer open={mobileNavOpen} onClose={() => setMobileNavOpen(false)}>
+          <div className="flex items-center justify-between px-4 py-4 border-b border-white/10">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-saffron-400 flex items-center justify-center text-base">🐘</div>
+              <span className="font-display font-bold text-white">{festivalName}</span>
+            </div>
+            <button onClick={() => setMobileNavOpen(false)} className="text-saffron-100" aria-label="Close menu">
+              <X size={20} />
+            </button>
+          </div>
+          <nav className="px-3 py-3 space-y-1">
             {visibleNavItems.map(({ to, label, icon: Icon, end, ...item }) => (
               <NavLink
                 key={to}
@@ -208,7 +220,7 @@ export default function Layout({ children, festivalName = 'Ganesh Utsav' }) {
               <LogOut size={18} /> Logout
             </button>
           </nav>
-        )}
+        </MobileNavDrawer>
 
         {/* Page content */}
         <main className="flex-1 px-4 md:px-8 py-6">{children}</main>

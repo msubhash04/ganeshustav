@@ -1,7 +1,8 @@
 import React from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, Building2, ScrollText, LogOut, Menu } from 'lucide-react'
+import { LayoutDashboard, Building2, ScrollText, LogOut, Menu, X } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import MobileNavDrawer from './MobileNavDrawer'
 
 const NAV_ITEMS = [
   { to: '/', label: 'Overview', icon: LayoutDashboard, end: true },
@@ -73,9 +74,26 @@ export default function DeveloperLayout({ children }) {
           </button>
         </header>
 
-        {/* Mobile nav drawer */}
-        {mobileOpen && (
-          <nav className="md:hidden bg-maroon-900 text-white px-3 py-2 space-y-1">
+        {/* Mobile nav drawer - rendered as a fixed overlay (see
+            MobileNavDrawer) so opening it never pushes page content down */}
+        <MobileNavDrawer
+          open={mobileOpen}
+          onClose={() => setMobileOpen(false)}
+          panelClassName="bg-gradient-to-b from-maroon-900 to-black text-white"
+        >
+          <div className="flex items-center justify-between px-4 py-4 border-b border-white/10">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-gold-500 flex items-center justify-center text-base">🐘</div>
+              <div>
+                <p className="font-display font-bold leading-tight text-sm">Ganesh Utsav</p>
+                <p className="text-[10px] text-gold-400 tracking-wide">SUPER ADMIN</p>
+              </div>
+            </div>
+            <button onClick={() => setMobileOpen(false)} className="text-saffron-100" aria-label="Close menu">
+              <X size={20} />
+            </button>
+          </div>
+          <nav className="px-3 py-3 space-y-1">
             {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
               <NavLink
                 key={to}
@@ -92,6 +110,7 @@ export default function DeveloperLayout({ children }) {
                 {label}
               </NavLink>
             ))}
+            <div className="border-t border-white/10 my-2" />
             <button
               onClick={handleLogout}
               className="flex items-center gap-3 px-3 py-2.5 rounded-xl w-full text-saffron-100 hover:bg-white/10 transition"
@@ -99,7 +118,7 @@ export default function DeveloperLayout({ children }) {
               <LogOut size={18} /> Logout
             </button>
           </nav>
-        )}
+        </MobileNavDrawer>
 
         <main className="flex-1 px-4 md:px-8 py-6">{children}</main>
       </div>
